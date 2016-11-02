@@ -26,6 +26,22 @@ port p_sda = XS1_PORT_1F;
 #define FXOS8700EQ_OUT_Z_MSB 0x5
 #define FXOS8700EQ_OUT_Z_LSB 0x6
 
+int AdjacentTo() {
+    return 0;
+}
+
+void GameRules() {
+
+
+}
+
+uchar Worker(uchar current_board[IMWD][IMHT]) {
+    uchar val;
+
+    return val;
+}
+
+
 /////////////////////////////////////////////////////////////////////////////////////////
 //
 // Read Image from PGM file from path infname[] to channel c_out
@@ -70,6 +86,7 @@ void DataInStream(char infname[], chanend c_out)
 void distributor(chanend c_in, chanend c_out, chanend fromAcc)
 {
   uchar val;
+  uchar current_board[IMWD][IMHT];
 
   //Starting up and wait for tilting of the xCore-200 Explorer
   printf( "ProcessImage: Start, size = %dx%d\n", IMHT, IMWD );
@@ -80,12 +97,30 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
   //This just inverts every pixel, but you should
   //change the image according to the "Game of Life"
   printf( "Processing...\n" );
+
   for( int y = 0; y < IMHT; y++ ) {   //go through all lines
     for( int x = 0; x < IMWD; x++ ) { //go through each pixel per line
       c_in :> val;                    //read the pixel value
-      c_out <: (uchar)( val ^ 0xFF ); //send some modified pixel out
+      current_board[x][y] = val;
     }
   }
+
+  /*
+   * UPDATE THE BOARD
+   */
+
+  par{
+      Worker(current_board);
+  }
+
+
+  //Prints out the board
+  for( int i = 0; i < IMHT; i++ ) {
+      for( int j = 0; j < IMWD; j++ ) {
+          c_out <: (uchar)current_board[i][j];
+      }
+  }
+
   printf( "\nOne processing round completed...\n" );
 }
 
