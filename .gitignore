@@ -34,3 +34,6 @@
 
 # hidden folders
 .metadata
+
+# build folders
+**/.build
