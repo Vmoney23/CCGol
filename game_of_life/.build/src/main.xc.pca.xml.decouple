@@ -2,13 +2,14 @@
 <fDef name="AdjacentTo" global="true" noreturn="false" doNotSpecialize="false" numParams="0"/>
 <fDef name="DataInStream" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fDef name="DataOutStream" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
-<fDef name="GameRules" global="true" noreturn="false" doNotSpecialize="false" numParams="0"/>
+<fDef name="GameRules" global="true" noreturn="false" doNotSpecialize="false" numParams="4"/>
 <fDef name="Worker" global="true" noreturn="false" doNotSpecialize="false" numParams="1"/>
 <fDef name="_safe_memcmp" global="true" noreturn="false" doNotSpecialize="true" numParams="3"/>
 <fDef name="_safe_memmove" global="true" noreturn="false" doNotSpecialize="true" numParams="3"/>
 <fDef name="_safe_memset" global="true" noreturn="false" doNotSpecialize="true" numParams="3"/>
 <fDef name="ack_read_request" global="true" interface="i2c_slave_callback_if" noreturn="false" doNotSpecialize="false" numParams="0"/>
 <fDef name="ack_write_request" global="true" interface="i2c_slave_callback_if" noreturn="false" doNotSpecialize="false" numParams="0"/>
+<fDef name="adjacent_to" global="true" noreturn="false" doNotSpecialize="false" numParams="3"/>
 <fDef name="delay_microseconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
 <fDef name="delay_milliseconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
 <fDef name="delay_seconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
@@ -42,6 +43,8 @@
 <fDef name="write_reg16" global="true" interface="i2c_master_if" noreturn="false" doNotSpecialize="true" numParams="4"/>
 <fDef name="write_reg16_addr8" global="true" interface="i2c_master_if" noreturn="false" doNotSpecialize="true" numParams="4"/>
 <fDef name="write_reg8_addr16" global="true" interface="i2c_master_if" noreturn="false" doNotSpecialize="true" numParams="4"/>
+<fDef name="xadd" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="yadd" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fCall name="delay_ticks_longlong" global="true" numArgs="1">
   <arg num="0">
     <values>
@@ -444,6 +447,23 @@
     </values>
   </arg>
 </fCall>
+<fCall name="adjacent_to" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <passThroughArg param="2" caller="GameRules" global="true"/>
+    <values>
+    </values>
+  </arg>
+  <arg num="2">
+    <passThroughArg param="3" caller="GameRules" global="true"/>
+    <values>
+    </values>
+  </arg>
+</fCall>
 <fCall name="printf" global="true" numArgs="1">
   <arg num="0">
     <values>
@@ -553,6 +573,28 @@
 </fCall>
 <fCall name="Worker" global="true" numArgs="1" impId="0">
   <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="GameRules" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
     <values>
       <value type="unknown"/>
     </values>

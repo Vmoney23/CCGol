@@ -367,7 +367,27 @@
     </values>
   </arg>
 </fInfo>
-<fInfo name="GameRules" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="0">
+<fInfo name="GameRules" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="4">
+  <arg num="0" specialize="false">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1" specialize="false">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2" specialize="false">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3" specialize="false">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
 </fInfo>
 <fInfo name="Worker" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="1">
   <arg num="0" specialize="false">
@@ -421,6 +441,23 @@
 <fInfo name="ack_read_request" global="true" interface="i2c_slave_callback_if" specialize="false" noreturn="false" doNotSpecialize="false" numParams="0">
 </fInfo>
 <fInfo name="ack_write_request" global="true" interface="i2c_slave_callback_if" specialize="false" noreturn="false" doNotSpecialize="false" numParams="0">
+</fInfo>
+<fInfo name="adjacent_to" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="3">
+  <arg num="0" specialize="false">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1" specialize="false">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2" specialize="false">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
 </fInfo>
 <fInfo name="delay_microseconds" global="true" specialize="false" noreturn="false" doNotSpecialize="true" numParams="1">
   <arg num="0" specialize="false">
@@ -941,8 +978,28 @@
     </values>
   </arg>
 </fInfo>
+<fInfo name="xadd" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="2">
+  <arg num="0" specialize="false">
+    <values>
+    </values>
+  </arg>
+  <arg num="1" specialize="false">
+    <values>
+    </values>
+  </arg>
+</fInfo>
 <fInfo name="xassert_msg" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="1">
   <arg num="0" specialize="false">
+    <values>
+    </values>
+  </arg>
+</fInfo>
+<fInfo name="yadd" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="2">
+  <arg num="0" specialize="false">
+    <values>
+    </values>
+  </arg>
+  <arg num="1" specialize="false">
     <values>
     </values>
   </arg>

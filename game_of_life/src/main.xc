@@ -30,9 +30,59 @@ int AdjacentTo() {
     return 0;
 }
 
-void GameRules() {
+int xadd (int i, int a) {
+    i += a;
+    while (i < 0) i += IMWD;
+    while (i >= IMWD) i -= IMWD;
+    return i;
+}
 
+/* add to a height index, wrapping around */
 
+int yadd (int i, int a) {
+    i += a;
+    while (i < 0) i += IMHT;
+    while (i >= IMHT) i -= IMHT;
+    return i;
+}
+
+int adjacent_to (uchar board[IMWD][IMHT], int x, int y) {
+    int k, l, count;
+
+    count = 0;
+
+    /* go around the cell */
+
+    for (k=-1; k<=1; k++) for (l=-1; l<=1; l++) {
+
+        /* only count if at least one of k,l isn't zero */
+
+        if (k || l)
+            if (board[(x+k)%IMWD][(y+l)%IMHT] == 255) {
+                count++;
+            }
+    }
+    return count;
+
+}
+
+uchar GameRules(uchar current_board[IMWD][IMHT], uchar next_board[IMWD][IMHT], int x, int y) {
+    uchar val = 255;
+    int a, i, j;
+
+    a = adjacent_to(current_board, x, y);
+    if (a == 2) next_board[i][j] = current_board[i][j];
+    if (a == 3) next_board[i][j] = 1;
+    if (a < 2) next_board[i][j] = 0;
+    if (a > 3) next_board[i][j] = 0;
+
+        /* copy the new board back into the old board */
+
+        for (i=0; i<IMWD; i++) for (j=0; j<IMHT; j++) {
+            current_board[i][j] = next_board[i][j];
+        }
+
+    return val;
 }
 
 uchar Worker(uchar current_board[IMWD][IMHT]) {
@@ -87,6 +137,8 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
 {
   uchar val;
   uchar current_board[IMWD][IMHT];
+  uchar next_board[IMWD][IMHT];
+
 
   //Starting up and wait for tilting of the xCore-200 Explorer
   printf( "ProcessImage: Start, size = %dx%d\n", IMHT, IMWD );
@@ -98,12 +150,18 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
   //change the image according to the "Game of Life"
   printf( "Processing...\n" );
 
+
+
+  //INITIALISATION
   for( int y = 0; y < IMHT; y++ ) {   //go through all lines
     for( int x = 0; x < IMWD; x++ ) { //go through each pixel per line
       c_in :> val;                    //read the pixel value
       current_board[x][y] = val;
     }
   }
+
+
+
 
   /*
    * UPDATE THE BOARD
@@ -113,11 +171,18 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
       Worker(current_board);
   }
 
+  for( int k = 0; k < IMHT; k++ ) {
+      for( int l = 0; l < IMWD; l++ ) {
+         next_board[l][k] = GameRules(current_board, next_board, l, k);
+      }
+  }
+
+  //current_board = next_board;
 
   //Prints out the board
   for( int i = 0; i < IMHT; i++ ) {
       for( int j = 0; j < IMWD; j++ ) {
-          c_out <: (uchar)current_board[i][j];
+          c_out <: (uchar)next_board[i][j];
       }
   }
 
