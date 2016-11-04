@@ -56,35 +56,40 @@ int adjacent_to ( int x, int y) {
 
     /* go around the cell */
 
-    for (k=-1; k<=1; k++) for (l=-1; l<=1; l++) {
+    for (k=-1; k<=1; k++) {
+        for (l=-1; l<=1; l++) {
 
-        if (k || l)
-            if (current_board[xadd(x,k)][yadd(y,l)] == 255) {
-                count++;
+            if (k || l) {
+                if (current_board[xadd(x,k)][yadd(y,l)] == 255) {
+                    count++;
+                }
             }
+        }
     }
     return count;
-
 }
 
 void GameRules(int x, int y) {
     int a;
 
     a = adjacent_to(x, y);
-    if (a == 2) {
-        next_board[x][y] = current_board[x][y];
-    }
-    else if (a == 3) {
-        next_board[x][y] = 255;
-    }
-    else if (a < 2) {
-        next_board[x][y] = 0;
-    }
-    else if (a > 3) {
-        next_board[x][y] = 0;
-    }
 
-
+    if(current_board[x][y] == 255) {
+        if( a < 2 || a > 3) {
+            next_board[x][y] = 0;
+        }
+        else {
+            next_board[x][y] = 255;
+        }
+    }
+    else {
+        if( a == 3) {
+            next_board[x][y] = 255;
+        }
+        else {
+            next_board[x][y] = 0;
+        }
+    }
 }
 
 uchar Worker() {
@@ -167,8 +172,8 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
    * UPDATE THE BOARD
    */
 
-  //10 iterations
-  for( int p = 0; p < 100; p++) {
+
+  for( int p = 0; p < 1; p++) {
 
       for( int k = 0; k < IMHT; k++ ) {
           for( int l = 0; l < IMWD; l++ ) {
@@ -178,16 +183,20 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
 
       /* copy the new board back into the old board */
 
-      for (int i=0; i<IMWD; i++) for (int j=0; j<IMHT; j++) {
+      for (int j=0; j<IMHT; j++) for (int i=0; i<IMWD; i++) {
           current_board[i][j] = next_board[i][j];
       }
   }
   //Prints out the board
-  for( int i = 0; i < IMHT; i++ ) {
-      for( int j = 0; j < IMWD; j++ ) {
-          c_out <: (uchar)next_board[i][j];
+  for( int j = 0; j < IMHT; j++ ) {
+      printf("\n");
+      for( int i = 0; i < IMWD; i++ ) {
+          printf( "-%4.1d ", current_board[i][j]);
+          c_out <: (uchar)current_board[i][j];
       }
   }
+
+
 
   printf( "\nOne processing round completed...\n" );
 }
@@ -216,7 +225,7 @@ void DataOutStream(char outfname[], chanend c_in)
       c_in :> line[ x ];
     }
     _writeoutline( line, IMWD );
-    printf( "DataOutStream: Line written...\n" );
+    //printf( "DataOutStream: Line written...\n" );
   }
   printf("data out should be done\n");
   //Close the PGM image
