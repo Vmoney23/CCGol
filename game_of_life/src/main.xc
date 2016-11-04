@@ -26,6 +26,9 @@ port p_sda = XS1_PORT_1F;
 #define FXOS8700EQ_OUT_Z_MSB 0x5
 #define FXOS8700EQ_OUT_Z_LSB 0x6
 
+uchar current_board[IMWD][IMHT];
+uchar next_board[IMWD][IMHT];
+
 int AdjacentTo() {
     return 0;
 }
@@ -46,7 +49,7 @@ int yadd (int i, int a) {
     return i;
 }
 
-int adjacent_to (uchar board[IMWD][IMHT], int x, int y) {
+int adjacent_to ( int x, int y) {
     int k, l, count;
 
     count = 0;
@@ -55,10 +58,8 @@ int adjacent_to (uchar board[IMWD][IMHT], int x, int y) {
 
     for (k=-1; k<=1; k++) for (l=-1; l<=1; l++) {
 
-        /* only count if at least one of k,l isn't zero */
-
         if (k || l)
-            if (board[(x+k)%IMWD][(y+l)%IMHT] == 255) {
+            if (current_board[xadd(x,k)][yadd(y,l)] == 255) {
                 count++;
             }
     }
@@ -66,26 +67,27 @@ int adjacent_to (uchar board[IMWD][IMHT], int x, int y) {
 
 }
 
-uchar GameRules(uchar current_board[IMWD][IMHT], uchar next_board[IMWD][IMHT], int x, int y) {
-    uchar val = 255;
-    int a, i, j;
+void GameRules(int x, int y) {
+    int a;
 
-    a = adjacent_to(current_board, x, y);
-    if (a == 2) next_board[i][j] = current_board[i][j];
-    if (a == 3) next_board[i][j] = 1;
-    if (a < 2) next_board[i][j] = 0;
-    if (a > 3) next_board[i][j] = 0;
+    a = adjacent_to(x, y);
+    if (a == 2) {
+        next_board[x][y] = current_board[x][y];
+    }
+    else if (a == 3) {
+        next_board[x][y] = 255;
+    }
+    else if (a < 2) {
+        next_board[x][y] = 0;
+    }
+    else if (a > 3) {
+        next_board[x][y] = 0;
+    }
 
-        /* copy the new board back into the old board */
 
-        for (i=0; i<IMWD; i++) for (j=0; j<IMHT; j++) {
-            current_board[i][j] = next_board[i][j];
-        }
-
-    return val;
 }
 
-uchar Worker(uchar current_board[IMWD][IMHT]) {
+uchar Worker() {
     uchar val;
 
     return val;
@@ -136,8 +138,6 @@ void DataInStream(char infname[], chanend c_out)
 void distributor(chanend c_in, chanend c_out, chanend fromAcc)
 {
   uchar val;
-  uchar current_board[IMWD][IMHT];
-  uchar next_board[IMWD][IMHT];
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -167,18 +167,21 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
    * UPDATE THE BOARD
    */
 
-  par{
-      Worker(current_board);
-  }
+  //10 iterations
+  for( int p = 0; p < 100; p++) {
 
-  for( int k = 0; k < IMHT; k++ ) {
-      for( int l = 0; l < IMWD; l++ ) {
-         next_board[l][k] = GameRules(current_board, next_board, l, k);
+      for( int k = 0; k < IMHT; k++ ) {
+          for( int l = 0; l < IMWD; l++ ) {
+             GameRules(l, k);
+          }
+      }
+
+      /* copy the new board back into the old board */
+
+      for (int i=0; i<IMWD; i++) for (int j=0; j<IMHT; j++) {
+          current_board[i][j] = next_board[i][j];
       }
   }
-
-  //current_board = next_board;
-
   //Prints out the board
   for( int i = 0; i < IMHT; i++ ) {
       for( int j = 0; j < IMWD; j++ ) {
@@ -215,7 +218,7 @@ void DataOutStream(char outfname[], chanend c_in)
     _writeoutline( line, IMWD );
     printf( "DataOutStream: Line written...\n" );
   }
-
+  printf("data out should be done\n");
   //Close the PGM image
   _closeoutpgm();
   printf( "DataOutStream: Done...\n" );
