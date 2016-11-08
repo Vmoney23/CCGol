@@ -29,6 +29,11 @@ port p_sda = XS1_PORT_1F;
 uchar current_board[IMWD][IMHT];
 uchar next_board[IMWD][IMHT];
 
+int next_board_segment1[4][4];
+int next_board_segment2[4][4];
+int next_board_segment3[4][4];
+int next_board_segment4[4][4];
+
 int AdjacentTo() {
     return 0;
 }
@@ -69,33 +74,36 @@ int adjacent_to ( int x, int y) {
     return count;
 }
 
-void GameRules(int x, int y) {
+int GameRules(int x, int y) {
     int a;
 
     a = adjacent_to(x, y);
 
     if(current_board[x][y] == 255) {
         if( a < 2 || a > 3) {
-            next_board[x][y] = 0;
+            return 0;
         }
         else {
-            next_board[x][y] = 255;
+            return 255;
         }
     }
     else {
         if( a == 3) {
-            next_board[x][y] = 255;
+            return 255;
         }
         else {
-            next_board[x][y] = 0;
+            return 0;
         }
     }
 }
 
-uchar Worker() {
-    uchar val;
+void Worker(int id, int next_board_segment[4][4]) {
 
-    return val;
+    for(int i = 0; i < 4; i++) {
+        for(int j = 0; j < 4; j++) {
+            next_board_segment[j][i] = GameRules(j, i);
+        }
+    }
 }
 
 
@@ -166,18 +174,33 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
   }
 
 
+  //creating board division
 
 
-  /*
-   * UPDATE THE BOARD
-   */
+  for(int i = 0; i < 4; i ++) {
+      for(int j = 0; j < 4; j++) {
+          next_board_segment1[i][j] = 0;
+          next_board_segment2[i][j] = 0;
+          next_board_segment3[i][j] = 0;
+          next_board_segment4[i][j] = 0;
+      }
+  }
+  //
 
 
-  for( int p = 0; p < 1; p++) {
+  par{
+      Worker(0, next_board_segment1);
+      Worker(1, next_board_segment2);
+      Worker(2, next_board_segment3);
+      Worker(3, next_board_segment4);
+  }
+
+  //p ITERATIONS OF THE RULES
+  for( int p = 0; p < 2000; p++) {
 
       for( int k = 0; k < IMHT; k++ ) {
           for( int l = 0; l < IMWD; l++ ) {
-             GameRules(l, k);
+             next_board[l][k] = GameRules(l, k);
           }
       }
 
@@ -187,6 +210,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
           current_board[i][j] = next_board[i][j];
       }
   }
+
   //Prints out the board
   for( int j = 0; j < IMHT; j++ ) {
       printf("\n");

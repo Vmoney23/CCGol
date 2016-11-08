@@ -379,7 +379,20 @@
     </values>
   </arg>
 </fInfo>
-<fInfo name="Worker" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="0">
+<fInfo name="Worker" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="2">
+  <arg num="0" specialize="false">
+    <values>
+      <value type="intval"><intval isSigned="true" val="0"/></value>
+      <value type="intval"><intval isSigned="true" val="1"/></value>
+      <value type="intval"><intval isSigned="true" val="2"/></value>
+      <value type="intval"><intval isSigned="true" val="3"/></value>
+    </values>
+  </arg>
+  <arg num="1" specialize="false">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
 </fInfo>
 <fInfo name="_safe_memcmp" global="true" specialize="false" noreturn="false" doNotSpecialize="true" numParams="3">
   <arg num="0" specialize="false">
@@ -494,7 +507,7 @@
   <arg num="0" specialize="false">
     <values>
       <value type="interface"><interfaceInfo index="0" type="dist" func="i2c_master" global="true" impUnit="/home/fe15/sw15256/linux/workspace/CCGol/lib_i2c/src/i2c_master_async.xc" impId="0" param="0"/></value>
-      <value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="0" param="0"/></value>
+      <value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="4" param="0"/></value>
     </values>
   </arg>
   <arg num="1" specialize="true">
@@ -671,7 +684,7 @@
 <fInfo name="orientation" global="true" specialize="true" noreturn="true" doNotSpecialize="false" numParams="2">
   <arg num="0" specialize="true">
     <values>
-      <value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="0" param="0"/></value>
+      <value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="4" param="0"/></value>
     </values>
   </arg>
   <arg num="1" specialize="false">
@@ -681,7 +694,7 @@
   </arg>
  <specializations>
    <specialization id="0">
-    <arg num="0"><values><value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="0" param="0"/></value></values></arg>
+    <arg num="0"><values><value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="4" param="0"/></value></values></arg>
     <arg num="1"><values><value type="unknown"/></values></arg>
    </specialization>
  </specializations>
@@ -728,7 +741,7 @@
 <fInfo name="read_acceleration" global="true" specialize="true" noreturn="false" doNotSpecialize="false" numParams="2">
   <arg num="0" specialize="true">
     <values>
-      <value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="0" param="0"/></value>
+      <value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="4" param="0"/></value>
     </values>
   </arg>
   <arg num="1" specialize="true">
@@ -738,7 +751,7 @@
   </arg>
  <specializations>
    <specialization id="0">
-    <arg num="0"><values><value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="0" param="0"/></value></values></arg>
+    <arg num="0"><values><value type="interface"><interfaceInfo index="0" type="dist" func="_Si2c_master_0" global="true" impUnit="../src/main.xc" impId="4" param="0"/></value></values></arg>
     <arg num="1"><values><value type="intval"><intval isSigned="true" val="1"/></value></values></arg>
    </specialization>
  </specializations>
@@ -988,9 +1001,9 @@
     </values>
   </arg>
 </fInfo>
-<fCall name="i2c_master" global="true" callerUnit="../src/main.xc" numArgs="5" impId="0" specializationId="0">
+<fCall name="i2c_master" global="true" callerUnit="../src/main.xc" numArgs="5" impId="4" specializationId="0">
 </fCall>
-<fCall name="orientation" global="true" callerUnit="../src/main.xc" numArgs="2" impId="1" specializationId="0">
+<fCall name="orientation" global="true" callerUnit="../src/main.xc" numArgs="2" impId="5" specializationId="0">
 </fCall>
 <fCall name="i2c_master" global="true" callerUnit="/home/fe15/sw15256/linux/workspace/CCGol/lib_i2c/src/i2c_master_async.xc" numArgs="5" impId="0" specializationId="0">
 </fCall>
