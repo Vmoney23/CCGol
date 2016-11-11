@@ -29,14 +29,7 @@ port p_sda = XS1_PORT_1F;
 uchar current_board[IMWD][IMHT];
 uchar next_board[IMWD][IMHT];
 
-int next_board_segment1[4][4];
-int next_board_segment2[4][4];
-int next_board_segment3[4][4];
-int next_board_segment4[4][4];
-
-int AdjacentTo() {
-    return 0;
-}
+int next_board_segment[4][8][8];
 
 int xadd (int i, int a) {
     i += a;
@@ -44,8 +37,6 @@ int xadd (int i, int a) {
     while (i >= IMWD) i -= IMWD;
     return i;
 }
-
-/* add to a height index, wrapping around */
 
 int yadd (int i, int a) {
     i += a;
@@ -96,14 +87,48 @@ int GameRules(int x, int y) {
         }
     }
 }
+void Master(chanend master_to_worker[4]) {
+    int worker_id = 0;
+    int workersfinished = 0;
+    while(workersfinished < 4) {
+        select {
+                case master_to_worker[int i] :> worker_id:
+                printf("Worker %d completed segment\n", worker_id);
+                workersfinished++;
+                break;
+            }
+    }
+}
 
-void Worker(int id, int next_board_segment[4][4]) {
+void Worker(int id, int next_board_segment[8][8], chanend worker_to_master) {
+    printf("Worker %d started\n", id);
+    int segment_processed = id;
+    int offset_x;
+    int offset_y;
 
-    for(int i = 0; i < 4; i++) {
-        for(int j = 0; j < 4; j++) {
-            next_board_segment[j][i] = GameRules(j, i);
+    if((id-1) == 0) {
+            offset_x = 0;
+            offset_y = 0;
+        }
+        else if((id-1) == 1) {
+            offset_x = 8;
+            offset_y = 0;
+        }
+        else if((id-1) == 2) {
+            offset_x = 0;
+            offset_y = 8;
+        }
+        else if((id-1) == 3) {
+            offset_x = 8;
+            offset_y = 8;
+        }
+
+    for(int i = 0; i < 8; i++) {
+        for(int j = 0; j < 8; j++) {
+            next_board_segment[j][i] = GameRules(offset_x + j, offset_y + i);
         }
     }
+    worker_to_master <: segment_processed;
 }
 
 
@@ -151,16 +176,19 @@ void DataInStream(char infname[], chanend c_out)
 void distributor(chanend c_in, chanend c_out, chanend fromAcc)
 {
   uchar val;
+  chan master_worker[4];
+  int processing_rounds;
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
   printf( "ProcessImage: Start, size = %dx%d\n", IMHT, IMWD );
   printf( "Waiting for Board Tilt...\n" );
-  //fromAcc :> int value;
+  fromAcc :> int value;
 
   //Read in and do something with your image values..
   //This just inverts every pixel, but you should
   //change the image according to the "Game of Life"
+  processing_rounds = 0;
   printf( "Processing...\n" );
 
 
@@ -173,56 +201,139 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
     }
   }
 
-
-  //creating board division
-
-
-  for(int i = 0; i < 4; i ++) {
-      for(int j = 0; j < 4; j++) {
-          next_board_segment1[i][j] = 0;
-          next_board_segment2[i][j] = 0;
-          next_board_segment3[i][j] = 0;
-          next_board_segment4[i][j] = 0;
-      }
-  }
-  //
-
-
-  par{
-      Worker(0, next_board_segment1);
-      Worker(1, next_board_segment2);
-      Worker(2, next_board_segment3);
-      Worker(3, next_board_segment4);
-  }
-
-  //p ITERATIONS OF THE RULES
-  for( int p = 0; p < 2000; p++) {
-
-      for( int k = 0; k < IMHT; k++ ) {
-          for( int l = 0; l < IMWD; l++ ) {
-             next_board[l][k] = GameRules(l, k);
+  //initialising board values
+  for(int i = 0; i < 4; i++) {
+      for(int j = 0; j < 8; j ++) {
+          for(int k= 0; k < 8; k ++) {
+              next_board_segment[i][j][k] = 0; //initialises board values to 0
           }
       }
-
-      /* copy the new board back into the old board */
-
-      for (int j=0; j<IMHT; j++) for (int i=0; i<IMWD; i++) {
-          current_board[i][j] = next_board[i][j];
-      }
   }
 
+
+  while(processing_rounds < 10) {
+      //setting next_board values to current_board
+        int offset_x = 0;
+        int offset_y = 0;
+
+        for(int i = 0; i < 4; i ++) {
+            if(i == 0) {
+                offset_x = 0;
+                offset_y = 0;
+            }
+            else if(i == 1) {
+                offset_x = 8;
+                offset_y = 0;
+            }
+            else if(i == 2) {
+                offset_x = 0;
+                offset_y = 8;
+            }
+            else if(i == 3) {
+                offset_x = 8;
+                offset_y = 8;
+            }
+
+              for(int j = 0; j < 8; j ++) {
+                  for(int k = 0; k < 8; k++) {
+                      next_board_segment[i][k][j] = current_board[offset_x + k][offset_y + j];
+                  }
+              }
+        }
+
+      //  //print the next_board_segments before their processing
+      //  for(int k = 0; k < 4; k ++) {
+      //      for( int j = 0; j < 8; j++ ) {
+      //            printf("\n");
+      //            for( int i = 0; i < 8; i++ ) {
+      //                printf( "-%4.1d ", next_board_segment[k][i][j]);
+      //            }
+      //       }
+      //      printf("\n");
+      //  }
+
+        par{
+            Master(master_worker);
+            Worker(1, next_board_segment[0], master_worker[0]);
+            Worker(2, next_board_segment[1], master_worker[1]);
+            Worker(3, next_board_segment[2], master_worker[2]);
+            Worker(4, next_board_segment[3], master_worker[3]);
+        }
+
+      //  //print the next_board_segments after their processing
+      //  for(int k = 0; k < 4; k ++) {
+      //      for( int j = 0; j < 8; j++ ) {
+      //            printf("\n");
+      //            for( int i = 0; i < 8; i++ ) {
+      //                printf( "-%4.1d ", next_board_segment[k][i][j]);
+      //            }
+      //       }
+      //      printf("\n");
+      //  }
+
+        //set the current board equal to the next_board_segments
+        offset_x = 0;
+        offset_y = 0;
+
+        for(int i = 0; i < 4; i ++) {
+            if(i == 0) {
+                offset_x = 0;
+                offset_y = 0;
+            }
+            else if(i == 1) {
+                offset_x = 8;
+                offset_y = 0;
+            }
+            else if(i == 2) {
+                offset_x = 0;
+                offset_y = 8;
+            }
+            else if(i == 3) {
+                offset_x = 8;
+                offset_y = 8;
+            }
+
+              for(int j = 0; j < 8; j ++) {
+                  for(int k = 0; k < 8; k++) {
+                      current_board[offset_x + k][offset_y + j] = next_board_segment[i][k][j];
+                  }
+              }
+        }
+
+
+
+
+
+
+      //  //p ITERATIONS OF THE RULES
+      //  for( int p = 0; p < 2; p++) {
+      //
+      //      for( int k = 0; k < IMHT; k++ ) {
+      //          for( int l = 0; l < IMWD; l++ ) {
+      //             next_board[l][k] = GameRules(l, k);
+      //          }
+      //      }
+      //
+      //      /* copy the new board back into the old board */
+      //
+      //      for (int j=0; j<IMHT; j++) for (int i=0; i<IMWD; i++) {
+      //          current_board[i][j] = next_board[i][j];
+      //      }
+      //  }
+
+        printf( "\nOne processing round completed...\n" );
+        processing_rounds ++;
+  }
   //Prints out the board
   for( int j = 0; j < IMHT; j++ ) {
       printf("\n");
-      for( int i = 0; i < IMWD; i++ ) {
-          printf( "-%4.1d ", current_board[i][j]);
-          c_out <: (uchar)current_board[i][j];
-      }
+          for( int i = 0; i < IMWD; i++ ) {
+              printf( "-%4.1d ", current_board[i][j]);
+                 c_out <: (uchar)current_board[i][j];
+             }
   }
 
 
-
-  printf( "\nOne processing round completed...\n" );
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

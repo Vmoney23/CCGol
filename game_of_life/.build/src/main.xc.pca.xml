@@ -1,9 +1,9 @@
 <preCompilationAnalysis file="../src/main.xc">
-<fDef name="AdjacentTo" global="true" noreturn="false" doNotSpecialize="false" numParams="0"/>
 <fDef name="DataInStream" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fDef name="DataOutStream" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fDef name="GameRules" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
-<fDef name="Worker" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="Master" global="true" noreturn="false" doNotSpecialize="false" numParams="1"/>
+<fDef name="Worker" global="true" noreturn="false" doNotSpecialize="false" numParams="3"/>
 <fDef name="_safe_memcmp" global="true" noreturn="false" doNotSpecialize="true" numParams="3"/>
 <fDef name="_safe_memmove" global="true" noreturn="false" doNotSpecialize="true" numParams="3"/>
 <fDef name="_safe_memset" global="true" noreturn="false" doNotSpecialize="true" numParams="3"/>
@@ -483,6 +483,30 @@
     </values>
   </arg>
 </fCall>
+<fCall name="printf" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
 <fCall name="GameRules" global="true" numArgs="2">
   <arg num="0">
     <values>
@@ -602,19 +626,14 @@
     </values>
   </arg>
 </fCall>
-<fCall name="Worker" global="true" numArgs="2" impId="0">
+<fCall name="Master" global="true" numArgs="1" impId="0">
   <arg num="0">
-    <values>
-      <value type="intval"><intval isSigned="true" val="0"/></value>
-    </values>
-  </arg>
-  <arg num="1">
     <values>
       <value type="unknown"/>
     </values>
   </arg>
 </fCall>
-<fCall name="Worker" global="true" numArgs="2" impId="1">
+<fCall name="Worker" global="true" numArgs="3" impId="1">
   <arg num="0">
     <values>
       <value type="intval"><intval isSigned="true" val="1"/></value>
@@ -625,8 +644,13 @@
       <value type="unknown"/>
     </values>
   </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
 </fCall>
-<fCall name="Worker" global="true" numArgs="2" impId="2">
+<fCall name="Worker" global="true" numArgs="3" impId="2">
   <arg num="0">
     <values>
       <value type="intval"><intval isSigned="true" val="2"/></value>
@@ -637,8 +661,13 @@
       <value type="unknown"/>
     </values>
   </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
 </fCall>
-<fCall name="Worker" global="true" numArgs="2" impId="3">
+<fCall name="Worker" global="true" numArgs="3" impId="3">
   <arg num="0">
     <values>
       <value type="intval"><intval isSigned="true" val="3"/></value>
@@ -649,14 +678,31 @@
       <value type="unknown"/>
     </values>
   </arg>
-</fCall>
-<fCall name="GameRules" global="true" numArgs="2">
-  <arg num="0">
+  <arg num="2">
     <values>
       <value type="unknown"/>
     </values>
   </arg>
+</fCall>
+<fCall name="Worker" global="true" numArgs="3" impId="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="4"/></value>
+    </values>
+  </arg>
   <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="1">
+  <arg num="0">
     <values>
       <value type="unknown"/>
     </values>
@@ -676,13 +722,6 @@
     </values>
   </arg>
   <arg num="1">
-    <values>
-      <value type="unknown"/>
-    </values>
-  </arg>
-</fCall>
-<fCall name="printf" global="true" numArgs="1">
-  <arg num="0">
     <values>
       <value type="unknown"/>
     </values>
@@ -844,10 +883,10 @@
     </values>
   </arg>
 </fCall>
-<fCall name="i2c_master" global="true" numArgs="5" impId="4">
+<fCall name="i2c_master" global="true" numArgs="5" impId="5">
   <arg num="0">
     <values>
-      <value type="interface"><interfaceInfo index="0" type="dist" func="i2c_master" global="true" impUnit="../src/main.xc" impId="4" param="0"/></value>
+      <value type="interface"><interfaceInfo index="0" type="dist" func="i2c_master" global="true" impUnit="../src/main.xc" impId="5" param="0"/></value>
     </values>
   </arg>
   <arg num="1">
@@ -871,10 +910,10 @@
     </values>
   </arg>
 </fCall>
-<fCall name="orientation" global="true" numArgs="2" impId="5">
+<fCall name="orientation" global="true" numArgs="2" impId="6">
   <arg num="0">
     <values>
-      <value type="interface"><interfaceInfo index="0" type="dist" func="i2c_master" global="true" impUnit="../src/main.xc" impId="4" param="0"/></value>
+      <value type="interface"><interfaceInfo index="0" type="dist" func="i2c_master" global="true" impUnit="../src/main.xc" impId="5" param="0"/></value>
     </values>
   </arg>
   <arg num="1">
@@ -883,19 +922,7 @@
     </values>
   </arg>
 </fCall>
-<fCall name="DataInStream" global="true" numArgs="2" impId="6">
-  <arg num="0">
-    <values>
-      <value type="unknown"/>
-    </values>
-  </arg>
-  <arg num="1">
-    <values>
-      <value type="unknown"/>
-    </values>
-  </arg>
-</fCall>
-<fCall name="DataOutStream" global="true" numArgs="2" impId="7">
+<fCall name="DataInStream" global="true" numArgs="2" impId="7">
   <arg num="0">
     <values>
       <value type="unknown"/>
@@ -907,7 +934,19 @@
     </values>
   </arg>
 </fCall>
-<fCall name="distributor" global="true" numArgs="3" impId="8">
+<fCall name="DataOutStream" global="true" numArgs="2" impId="8">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="distributor" global="true" numArgs="3" impId="9">
   <arg num="0">
     <values>
       <value type="unknown"/>
