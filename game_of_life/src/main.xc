@@ -7,8 +7,8 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 16                  //image height
-#define  IMWD 16                  //image width
+#define  IMHT 256                  //image height
+#define  IMWD 256                 //image width
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -29,7 +29,30 @@ port p_sda = XS1_PORT_1F;
 uchar current_board[IMWD][IMHT];
 uchar next_board[IMWD][IMHT];
 
-int next_board_segment[4][8][8];
+int next_board_segment[4][(IMWD/2)][(IMHT/2)];
+
+void print_next_board() {
+    //print the next_board_segments
+          for(int k = 0; k < 4; k ++) {
+              for( int j = 0; j < (IMHT/2); j++ ) {
+                    printf("\n");
+                    for( int i = 0; i < (IMWD/2); i++ ) {
+                        printf( "-%4.1d ", next_board_segment[k][i][j]);
+                    }
+               }
+              printf("\n");
+          }
+}
+
+void initialise_segments() {
+    for(int i = 0; i < 4; i++) {
+        for(int j = 0; j < (IMWD/2); j ++) {
+            for(int k= 0; k < (IMHT/2); k ++) {
+                next_board_segment[i][j][k] = 0; //initialises board values to 0
+            }
+        }
+    }
+}
 
 int xadd (int i, int a) {
     i += a;
@@ -100,7 +123,7 @@ void Master(chanend master_to_worker[4]) {
     }
 }
 
-void Worker(int id, int next_board_segment[8][8], chanend worker_to_master) {
+void Worker(int id, int next_board_segment[(IMWD/2)][(IMHT/2)], chanend worker_to_master) {
     printf("Worker %d started\n", id);
     int segment_processed = id;
     int offset_x;
@@ -111,20 +134,20 @@ void Worker(int id, int next_board_segment[8][8], chanend worker_to_master) {
             offset_y = 0;
         }
         else if((id-1) == 1) {
-            offset_x = 8;
+            offset_x = (IMWD/2);
             offset_y = 0;
         }
         else if((id-1) == 2) {
             offset_x = 0;
-            offset_y = 8;
+            offset_y = (IMHT/2);
         }
         else if((id-1) == 3) {
-            offset_x = 8;
-            offset_y = 8;
+            offset_x = (IMWD/2);
+            offset_y = (IMHT/2);
         }
 
-    for(int i = 0; i < 8; i++) {
-        for(int j = 0; j < 8; j++) {
+    for(int i = 0; i < (IMHT/2); i++) {
+        for(int j = 0; j < (IMWD/2); j++) {
             next_board_segment[j][i] = GameRules(offset_x + j, offset_y + i);
         }
     }
@@ -155,9 +178,9 @@ void DataInStream(char infname[], chanend c_out)
     _readinline( line, IMWD );
     for( int x = 0; x < IMWD; x++ ) {
       c_out <: line[ x ];
-      printf( "-%4.1d ", line[ x ] ); //show image values
+      //printf( "-%4.1d ", line[ x ] ); //show image values
     }
-    printf( "\n" );
+    //printf( "\n" );
   }
 
   //Close PGM image file
@@ -178,6 +201,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
   uchar val;
   chan master_worker[4];
   int processing_rounds;
+  int max_rounds;
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -189,6 +213,8 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
   //This just inverts every pixel, but you should
   //change the image according to the "Game of Life"
   processing_rounds = 0;
+  max_rounds = 4;
+
   printf( "Processing...\n" );
 
 
@@ -201,17 +227,9 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
     }
   }
 
-  //initialising board values
-  for(int i = 0; i < 4; i++) {
-      for(int j = 0; j < 8; j ++) {
-          for(int k= 0; k < 8; k ++) {
-              next_board_segment[i][j][k] = 0; //initialises board values to 0
-          }
-      }
-  }
+  initialise_segments();
 
-
-  while(processing_rounds < 10) {
+  while(processing_rounds < max_rounds) {
       //setting next_board values to current_board
         int offset_x = 0;
         int offset_y = 0;
@@ -222,35 +240,24 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
                 offset_y = 0;
             }
             else if(i == 1) {
-                offset_x = 8;
+                offset_x = (IMWD/2);
                 offset_y = 0;
             }
             else if(i == 2) {
                 offset_x = 0;
-                offset_y = 8;
+                offset_y = (IMHT/2);
             }
             else if(i == 3) {
-                offset_x = 8;
-                offset_y = 8;
+                offset_x = (IMWD/2);
+                offset_y = (IMHT/2);
             }
 
-              for(int j = 0; j < 8; j ++) {
-                  for(int k = 0; k < 8; k++) {
+              for(int j = 0; j < (IMHT/2); j ++) {
+                  for(int k = 0; k < (IMWD/2); k++) {
                       next_board_segment[i][k][j] = current_board[offset_x + k][offset_y + j];
                   }
               }
         }
-
-      //  //print the next_board_segments before their processing
-      //  for(int k = 0; k < 4; k ++) {
-      //      for( int j = 0; j < 8; j++ ) {
-      //            printf("\n");
-      //            for( int i = 0; i < 8; i++ ) {
-      //                printf( "-%4.1d ", next_board_segment[k][i][j]);
-      //            }
-      //       }
-      //      printf("\n");
-      //  }
 
         par{
             Master(master_worker);
@@ -260,16 +267,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
             Worker(4, next_board_segment[3], master_worker[3]);
         }
 
-      //  //print the next_board_segments after their processing
-      //  for(int k = 0; k < 4; k ++) {
-      //      for( int j = 0; j < 8; j++ ) {
-      //            printf("\n");
-      //            for( int i = 0; i < 8; i++ ) {
-      //                printf( "-%4.1d ", next_board_segment[k][i][j]);
-      //            }
-      //       }
-      //      printf("\n");
-      //  }
 
         //set the current board equal to the next_board_segments
         offset_x = 0;
@@ -281,54 +278,34 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
                 offset_y = 0;
             }
             else if(i == 1) {
-                offset_x = 8;
+                offset_x = (IMWD/2);
                 offset_y = 0;
             }
             else if(i == 2) {
                 offset_x = 0;
-                offset_y = 8;
+                offset_y = (IMHT/2);
             }
             else if(i == 3) {
-                offset_x = 8;
-                offset_y = 8;
+                offset_x = (IMWD/2);
+                offset_y = (IMHT/2);
             }
 
-              for(int j = 0; j < 8; j ++) {
-                  for(int k = 0; k < 8; k++) {
+              for(int j = 0; j < (IMHT/2); j ++) {
+                  for(int k = 0; k < (IMWD/2); k++) {
                       current_board[offset_x + k][offset_y + j] = next_board_segment[i][k][j];
                   }
               }
         }
 
 
-
-
-
-
-      //  //p ITERATIONS OF THE RULES
-      //  for( int p = 0; p < 2; p++) {
-      //
-      //      for( int k = 0; k < IMHT; k++ ) {
-      //          for( int l = 0; l < IMWD; l++ ) {
-      //             next_board[l][k] = GameRules(l, k);
-      //          }
-      //      }
-      //
-      //      /* copy the new board back into the old board */
-      //
-      //      for (int j=0; j<IMHT; j++) for (int i=0; i<IMWD; i++) {
-      //          current_board[i][j] = next_board[i][j];
-      //      }
-      //  }
-
-        printf( "\nOne processing round completed...\n" );
+        printf( "\n%d processing round completed...\n", (processing_rounds+1));
         processing_rounds ++;
   }
   //Prints out the board
   for( int j = 0; j < IMHT; j++ ) {
-      printf("\n");
+      //printf("\n");
           for( int i = 0; i < IMWD; i++ ) {
-              printf( "-%4.1d ", current_board[i][j]);
+              //printf( "-%4.1d ", current_board[i][j]);
                  c_out <: (uchar)current_board[i][j];
              }
   }
@@ -421,8 +398,8 @@ int main(void) {
 
 i2c_master_if i2c[1];               //interface to orientation
 
-char infname[] = "test.pgm";     //put your input image path here
-char outfname[] = "testout.pgm"; //put your output image path here
+char infname[] = "256x256.pgm";     //put your input image path here
+char outfname[] = "testout256.pgm"; //put your output image path here
 chan c_inIO, c_outIO, c_control;    //extend your channel definitions here
 
 par {

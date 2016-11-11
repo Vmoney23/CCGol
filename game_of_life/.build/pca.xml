@@ -678,6 +678,8 @@
     </values>
   </arg>
 </fInfo>
+<fInfo name="initialise_segments" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="0">
+</fInfo>
 <fInfo name="main" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="0">
 </fInfo>
 <fInfo name="master_requires_data" global="true" interface="i2c_slave_callback_if" specialize="false" noreturn="false" doNotSpecialize="false" numParams="0">
@@ -708,6 +710,8 @@
     <arg num="1"><values><value type="unknown"/></values></arg>
    </specialization>
  </specializations>
+</fInfo>
+<fInfo name="print_next_board" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="0">
 </fInfo>
 <fInfo name="read" global="true" interface="i2c_master_async_if" specialize="false" noreturn="false" doNotSpecialize="false" numParams="3">
   <arg num="0" specialize="false">
