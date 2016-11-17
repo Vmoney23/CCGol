@@ -7,13 +7,13 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 256                  //image height
-#define  IMWD 256                 //image width
+#define  IMHT 64                  //image height
+#define  IMWD 64                 //image width
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
-port p_scl = XS1_PORT_1E;         //interface ports to orientation
-port p_sda = XS1_PORT_1F;
+on tile[0] : port p_scl = XS1_PORT_1E;         //interface ports to orientation
+on tile[0] : port p_sda = XS1_PORT_1F;
 
 #define FXOS8700EQ_I2C_ADDR 0x1E  //register addresses for orientation
 #define FXOS8700EQ_XYZ_DATA_CFG_REG 0x0E
@@ -26,33 +26,6 @@ port p_sda = XS1_PORT_1F;
 #define FXOS8700EQ_OUT_Z_MSB 0x5
 #define FXOS8700EQ_OUT_Z_LSB 0x6
 
-uchar current_board[IMWD][IMHT];
-uchar next_board[IMWD][IMHT];
-
-int next_board_segment[4][(IMWD/2)][(IMHT/2)];
-
-void print_next_board() {
-    //print the next_board_segments
-          for(int k = 0; k < 4; k ++) {
-              for( int j = 0; j < (IMHT/2); j++ ) {
-                    printf("\n");
-                    for( int i = 0; i < (IMWD/2); i++ ) {
-                        printf( "-%4.1d ", next_board_segment[k][i][j]);
-                    }
-               }
-              printf("\n");
-          }
-}
-
-void initialise_segments() {
-    for(int i = 0; i < 4; i++) {
-        for(int j = 0; j < (IMWD/2); j ++) {
-            for(int k= 0; k < (IMHT/2); k ++) {
-                next_board_segment[i][j][k] = 0; //initialises board values to 0
-            }
-        }
-    }
-}
 
 int xadd (int i, int a) {
     i += a;
@@ -68,90 +41,69 @@ int yadd (int i, int a) {
     return i;
 }
 
-int adjacent_to ( int x, int y) {
-    int k, l, count;
-
-    count = 0;
-
-    /* go around the cell */
-
-    for (k=-1; k<=1; k++) {
-        for (l=-1; l<=1; l++) {
-
-            if (k || l) {
-                if (current_board[xadd(x,k)][yadd(y,l)] == 255) {
-                    count++;
-                }
-            }
-        }
-    }
-    return count;
-}
-
-int GameRules(int x, int y) {
-    int a;
-
-    a = adjacent_to(x, y);
-
-    if(current_board[x][y] == 255) {
-        if( a < 2 || a > 3) {
-            return 0;
-        }
-        else {
-            return 255;
-        }
-    }
-    else {
-        if( a == 3) {
-            return 255;
-        }
-        else {
-            return 0;
-        }
-    }
-}
-void Master(chanend master_to_worker[4]) {
-    int worker_id = 0;
-    int workersfinished = 0;
-    while(workersfinished < 4) {
-        select {
-                case master_to_worker[int i] :> worker_id:
-                printf("Worker %d completed segment\n", worker_id);
-                workersfinished++;
-                break;
-            }
-    }
-}
-
-void Worker(int id, int next_board_segment[(IMWD/2)][(IMHT/2)], chanend worker_to_master) {
+void Worker(int id, chanend worker_distributor) {
     printf("Worker %d started\n", id);
-    int segment_processed = id;
-    int offset_x;
-    int offset_y;
-
-    if((id-1) == 0) {
-            offset_x = 0;
-            offset_y = 0;
-        }
-        else if((id-1) == 1) {
-            offset_x = (IMWD/2);
-            offset_y = 0;
-        }
-        else if((id-1) == 2) {
-            offset_x = 0;
-            offset_y = (IMHT/2);
-        }
-        else if((id-1) == 3) {
-            offset_x = (IMWD/2);
-            offset_y = (IMHT/2);
-        }
+    uchar board_segment[(IMWD/2)][(IMHT/2)];
+    uchar next_board_segment[(IMWD/2)][(IMHT/2)];
+    uchar a;
+    uchar count = 0;
 
     for(int i = 0; i < (IMHT/2); i++) {
         for(int j = 0; j < (IMWD/2); j++) {
-            next_board_segment[j][i] = GameRules(offset_x + j, offset_y + i);
+            worker_distributor :> board_segment[j][i];
         }
     }
-    worker_to_master <: segment_processed;
+    printf("Worker %d data in complete \n", id);
+    //PROCESSING
+
+    for(int y = 0; y < (IMHT/2); y ++) {
+        for(int x = 0; x < (IMWD/2); x ++) { //for all the cells in the board
+            //calculate the adjacent cells
+            for (uchar k=-1; k<=1; k++) {
+                        for (uchar l=-1; l<=1; l++) {
+
+                            if (k || l) {
+                                if (board_segment[xadd(x,k)][yadd(y,l)] == 255) {
+                                    count++;
+                                }
+                            }
+                        }
+            }
+
+            a = count;
+            //calculate whether the cell should die
+            if(board_segment[x][y] == 255) {
+                    if( a < 2 || a > 3) {
+                        //worker_distributor <: 0;
+                        next_board_segment[x][y] = 0;
+                    }
+                    else {
+                        //worker_distributor <: 255;
+                        next_board_segment[x][y] = 255;
+                    }
+            }
+            else {
+                if( a == 3) {
+                    //worker_distributor <: 255;
+                    next_board_segment[x][y] = 255;
+                }
+                else {
+                    //worker_distributor <: 0;
+                    next_board_segment[x][y] = 0;
+                }
+            }
+
+        }
+    }
+    printf("Worker %d processing complete \n", id);
+
+    worker_distributor <: id;
+    for(int y = 0; y < (IMHT/2); y ++) {
+            for(int x = 0; x < (IMWD/2); x ++) {
+                worker_distributor <: next_board_segment[x][y];
+            }
+    }
+    printf("\nWorker %d finished\n", id);
 }
 
 
@@ -196,12 +148,15 @@ void DataInStream(char infname[], chanend c_out)
 // Currently the function just inverts the image
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-void distributor(chanend c_in, chanend c_out, chanend fromAcc)
+void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distributor_worker[4])
 {
   uchar val;
-  chan master_worker[4];
-  int processing_rounds;
-  int max_rounds;
+  uchar processing_rounds;
+  uchar max_rounds;
+  uchar current_board[IMWD][IMHT];
+  uchar new_board[IMWD][IMHT];
+  uchar worker_finished = 0;
+  uchar workers_finished = 0;
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -209,11 +164,8 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
   printf( "Waiting for Board Tilt...\n" );
   fromAcc :> int value;
 
-  //Read in and do something with your image values..
-  //This just inverts every pixel, but you should
-  //change the image according to the "Game of Life"
   processing_rounds = 0;
-  max_rounds = 4;
+  max_rounds = 1;
 
   printf( "Processing...\n" );
 
@@ -226,8 +178,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
       current_board[x][y] = val;
     }
   }
-
-  initialise_segments();
 
   while(processing_rounds < max_rounds) {
       //setting next_board values to current_board
@@ -254,46 +204,72 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
 
               for(int j = 0; j < (IMHT/2); j ++) {
                   for(int k = 0; k < (IMWD/2); k++) {
-                      next_board_segment[i][k][j] = current_board[offset_x + k][offset_y + j];
+                      distributor_worker[i] <: current_board[offset_x + k][offset_y + j];
                   }
               }
         }
 
-        par{
-            Master(master_worker);
-            Worker(1, next_board_segment[0], master_worker[0]);
-            Worker(2, next_board_segment[1], master_worker[1]);
-            Worker(3, next_board_segment[2], master_worker[2]);
-            Worker(4, next_board_segment[3], master_worker[3]);
-        }
+//            distributor_worker[0] <: worker_finished;
+//            //workers_finished++;
+//            distributor_worker[1] <: worker_finished;
+//            distributor_worker[2] <: worker_finished;
+//            distributor_worker[3] <: worker_finished;
 
+            /*select {
+                        case distributor_worker[0] :> worker_finished:
+                        printf("0 start\n");
+                            offset_x = 0;
+                            offset_y = 0;
 
-        //set the current board equal to the next_board_segments
-        offset_x = 0;
-        offset_y = 0;
+                            for(int j = 0; j < (IMHT/2); j ++) {
+                                  for(int k = 0; k < (IMWD/2); k++) {
+                                      distributor_worker[0] :> new_board[offset_x + k][offset_y + j];
+                                  }
+                            }
+                            break;
 
-        for(int i = 0; i < 4; i ++) {
-            if(i == 0) {
-                offset_x = 0;
-                offset_y = 0;
-            }
-            else if(i == 1) {
-                offset_x = (IMWD/2);
-                offset_y = 0;
-            }
-            else if(i == 2) {
-                offset_x = 0;
-                offset_y = (IMHT/2);
-            }
-            else if(i == 3) {
-                offset_x = (IMWD/2);
-                offset_y = (IMHT/2);
-            }
+                        case distributor_worker[1] :> worker_finished:
+                        printf("1 start\n");
+                            offset_x = (IMWD/2);
+                            offset_y = 0;
 
-              for(int j = 0; j < (IMHT/2); j ++) {
-                  for(int k = 0; k < (IMWD/2); k++) {
-                      current_board[offset_x + k][offset_y + j] = next_board_segment[i][k][j];
-                  }
+                            for(int j = 0; j < (IMHT/2); j ++) {
+                                  for(int k = 0; k < (IMWD/2); k++) {
+                                      distributor_worker[1] :> new_board[offset_x + k][offset_y + j];
+                                  }
+                            }
+                            break;
+
+                        case distributor_worker[2] :> worker_finished:
+                        printf("2 start\n");
+                            offset_x = 0;
+                            offset_y = (IMHT/2);
+
+                            for(int j = 0; j < (IMHT/2); j ++) {
+                                  for(int k = 0; k < (IMWD/2); k++) {
+                                      distributor_worker[2] :> new_board[offset_x + k][offset_y + j];
+                                  }
+                            }
+                            break;
+
+                        case distributor_worker[3] :> worker_finished:
+                        printf("3 start\n");
+                            offset_x = (IMWD/2);
+                            offset_y = (IMHT/2);
+
+                            for(int j = 0; j < (IMHT/2); j ++) {
+                                  for(int k = 0; k < (IMWD/2); k++) {
+                                      distributor_worker[3] :> new_board[offset_x + k][offset_y + j];
+                                  }
+                            }
+                            break;
+                   }*/
+
+        //}
+
+        for(int j = 0; j < (IMHT/2); j ++) {
+              for(int k = 0; k < (IMWD/2); k++) {
+                  current_board[k][j] = new_board[k][j];
               }
         }
 
@@ -303,9 +279,9 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc)
   }
   //Prints out the board
   for( int j = 0; j < IMHT; j++ ) {
-      //printf("\n");
+      printf("\n");
           for( int i = 0; i < IMWD; i++ ) {
-              //printf( "-%4.1d ", current_board[i][j]);
+                 printf( "-%4.1d ", current_board[i][j]);
                  c_out <: (uchar)current_board[i][j];
              }
   }
@@ -339,7 +315,6 @@ void DataOutStream(char outfname[], chanend c_in)
     _writeoutline( line, IMWD );
     //printf( "DataOutStream: Line written...\n" );
   }
-  printf("data out should be done\n");
   //Close the PGM image
   _closeoutpgm();
   printf( "DataOutStream: Done...\n" );
@@ -398,16 +373,20 @@ int main(void) {
 
 i2c_master_if i2c[1];               //interface to orientation
 
-char infname[] = "256x256.pgm";     //put your input image path here
-char outfname[] = "testout256.pgm"; //put your output image path here
-chan c_inIO, c_outIO, c_control;    //extend your channel definitions here
+//char infname[] = "64x64.pgm";     //put your input image path here
+//char outfname[] = "testout64.pgm"; //put your output image path here
+chan c_inIO, c_outIO, c_control, distributor_worker[4];    //extend your channel definitions here
 
 par {
-    i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
-    orientation(i2c[0],c_control);        //client thread reading orientation data
-    DataInStream(infname, c_inIO);          //thread to read in a PGM image
-    DataOutStream(outfname, c_outIO);       //thread to write out a PGM image
-    distributor(c_inIO, c_outIO, c_control);//thread to coordinate work on image
+    on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
+    on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
+    on tile[0] : DataInStream("64x64.pgm", c_inIO);          //thread to read in a PGM image
+    on tile[1] : DataOutStream("testout64.pgm", c_outIO);       //thread to write out a PGM image
+    on tile[0] : distributor(c_inIO, c_outIO, c_control, distributor_worker);//thread to coordinate work on image
+    on tile[1] : Worker(1, distributor_worker[0]);
+    on tile[1] : Worker(2, distributor_worker[1]);
+    on tile[1] : Worker(3, distributor_worker[2]);
+    on tile[1] : Worker(4, distributor_worker[3]);
   }
 
   return 0;
