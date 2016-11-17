@@ -47,6 +47,7 @@ void Worker(int id, chanend worker_distributor) {
     uchar next_board_segment[(IMWD/2)][(IMHT/2)];
     uchar a;
     uchar count = 0;
+    uchar send_permission = 1;
 
     for(int i = 0; i < (IMHT/2); i++) {
         for(int j = 0; j < (IMWD/2); j++) {
@@ -98,10 +99,15 @@ void Worker(int id, chanend worker_distributor) {
     printf("Worker %d processing complete \n", id);
 
     worker_distributor <: id;
-    for(int y = 0; y < (IMHT/2); y ++) {
-            for(int x = 0; x < (IMWD/2); x ++) {
-                worker_distributor <: next_board_segment[x][y];
-            }
+    //worker_distributor :> send_permission;
+    printf("Worker %d permission granted\n", id);
+
+    if(send_permission == 1) {
+        for(int y = 0; y < (IMHT/2); y ++) {
+                    for(int x = 0; x < (IMWD/2); x ++) {
+                        worker_distributor <: next_board_segment[x][y];
+                    }
+        }
     }
     printf("\nWorker %d finished\n", id);
 }
@@ -155,9 +161,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distribut
   uchar max_rounds;
   uchar current_board[IMWD][IMHT];
   uchar new_board[IMWD][IMHT];
-  uchar worker_finished = 0;
   uchar workers_finished = 0;
-
 
   //Starting up and wait for tilting of the xCore-200 Explorer
   printf( "ProcessImage: Start, size = %dx%d\n", IMHT, IMWD );
@@ -209,66 +213,42 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distribut
               }
         }
 
-//            distributor_worker[0] <: worker_finished;
-//            //workers_finished++;
-//            distributor_worker[1] <: worker_finished;
-//            distributor_worker[2] <: worker_finished;
-//            distributor_worker[3] <: worker_finished;
+        while(workers_finished<4) {
+            select {
+                       case distributor_worker[int j] :> int data:
+                       printf("channel %d gets %d data\n", j, data);
+                       //distributor_worker[j] <: 1;
+                       if(j == 0) {
+                           offset_x = 0;
+                           offset_y = 0;
+                       }
+                       else if(j == 1) {
+                           offset_x = (IMWD/2);
+                           offset_y = 0;
+                       }
+                       else if(j == 2) {
+                           offset_x = 0;
+                           offset_y = (IMHT/2);
+                       }
+                       else if(j == 3) {
+                           offset_x = (IMWD/2);
+                           offset_y = (IMHT/2);
+                       }
 
-            /*select {
-                        case distributor_worker[0] :> worker_finished:
-                        printf("0 start\n");
-                            offset_x = 0;
-                            offset_y = 0;
+                       for(int l = 0; l < (IMHT/2); l ++) {
+                           for(int k = 0; k < (IMWD/2); k++) {
+                               distributor_worker[j] :> new_board[offset_x + k][offset_y + l];
+                           }
+                       }
 
-                            for(int j = 0; j < (IMHT/2); j ++) {
-                                  for(int k = 0; k < (IMWD/2); k++) {
-                                      distributor_worker[0] :> new_board[offset_x + k][offset_y + j];
-                                  }
-                            }
-                            break;
+                       workers_finished++;
 
-                        case distributor_worker[1] :> worker_finished:
-                        printf("1 start\n");
-                            offset_x = (IMWD/2);
-                            offset_y = 0;
+                       break;
+                   }
+        }
 
-                            for(int j = 0; j < (IMHT/2); j ++) {
-                                  for(int k = 0; k < (IMWD/2); k++) {
-                                      distributor_worker[1] :> new_board[offset_x + k][offset_y + j];
-                                  }
-                            }
-                            break;
-
-                        case distributor_worker[2] :> worker_finished:
-                        printf("2 start\n");
-                            offset_x = 0;
-                            offset_y = (IMHT/2);
-
-                            for(int j = 0; j < (IMHT/2); j ++) {
-                                  for(int k = 0; k < (IMWD/2); k++) {
-                                      distributor_worker[2] :> new_board[offset_x + k][offset_y + j];
-                                  }
-                            }
-                            break;
-
-                        case distributor_worker[3] :> worker_finished:
-                        printf("3 start\n");
-                            offset_x = (IMWD/2);
-                            offset_y = (IMHT/2);
-
-                            for(int j = 0; j < (IMHT/2); j ++) {
-                                  for(int k = 0; k < (IMWD/2); k++) {
-                                      distributor_worker[3] :> new_board[offset_x + k][offset_y + j];
-                                  }
-                            }
-                            break;
-                   }*/
-
-        //}
-
-        for(int j = 0; j < (IMHT/2); j ++) {
-              for(int k = 0; k < (IMWD/2); k++) {
+        for(int j = 0; j < (IMHT); j ++) {
+              for(int k = 0; k < (IMWD); k++) {
                   current_board[k][j] = new_board[k][j];
               }
         }
