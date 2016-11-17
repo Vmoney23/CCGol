@@ -43,7 +43,7 @@ int yadd (int i, int a) {
 
 void Worker(int id, chanend worker_distributor) {
     printf("Worker %d started\n", id);
-    uchar board_segment[(IMWD/2)][(IMHT/2)];
+    uchar board_segment[(IMWD/2)][(IMHT/2)]; //TODO : feed in ghost cells
     uchar next_board_segment[(IMWD/2)][(IMHT/2)];
     uchar a;
     uchar count = 0;
@@ -60,7 +60,7 @@ void Worker(int id, chanend worker_distributor) {
     for(int y = 0; y < (IMHT/2); y ++) {
         for(int x = 0; x < (IMWD/2); x ++) { //for all the cells in the board
             //calculate the adjacent cells
-            for (uchar k=-1; k<=1; k++) {
+            for (uchar k=-1; k<=1; k++) { //TODO: Adapt this logic to work with our ghost cells
                         for (uchar l=-1; l<=1; l++) {
 
                             if (k || l) {
@@ -81,6 +81,7 @@ void Worker(int id, chanend worker_distributor) {
                     else {
                         //worker_distributor <: 255;
                         next_board_segment[x][y] = 255;
+                        printf("\n\n255\n\n");
                     }
             }
             else {
@@ -184,10 +185,10 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distribut
   }
 
   while(processing_rounds < max_rounds) {
-      //setting next_board values to current_board
         int offset_x = 0;
         int offset_y = 0;
 
+//TODO: make for loop parallel
         for(int i = 0; i < 4; i ++) {
             if(i == 0) {
                 offset_x = 0;
@@ -206,7 +207,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distribut
                 offset_y = (IMHT/2);
             }
 
-              for(int j = 0; j < (IMHT/2); j ++) {
+              for(int j = 0; j < (IMHT/2); j ++) { //TODO: Give workers their ghost cells
                   for(int k = 0; k < (IMWD/2); k++) {
                       distributor_worker[i] <: current_board[offset_x + k][offset_y + j];
                   }
