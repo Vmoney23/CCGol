@@ -7,8 +7,8 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 64                  //image height
-#define  IMWD 64                 //image width
+#define  IMHT 16                  //image height
+#define  IMWD 16                  //image width
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -34,6 +34,13 @@ int xadd (int i, int a) {
     return i;
 }
 
+int xadd2 (int i, int a) {
+    i += a;
+    while (i < 0) i += (IMWD/2);
+    while (i >= (IMWD/2)) i -= (IMWD/2);
+    return i;
+}
+
 int yadd (int i, int a) {
     i += a;
     while (i < 0) i += IMHT;
@@ -41,30 +48,38 @@ int yadd (int i, int a) {
     return i;
 }
 
+int yadd2 (int i, int a) {
+    i += a;
+    while (i < 0) i += (IMHT/2);
+    while (i >= (IMHT/2)) i -= (IMHT/2);
+    return i;
+}
+
 void Worker(int id, chanend worker_distributor) {
     printf("Worker %d started\n", id);
-    uchar board_segment[(IMWD/2)][(IMHT/2)]; //TODO : feed in ghost cells
+    uchar board_segment[(IMWD/2)+ 2 ][(IMHT/2)+ 2 ]; //TODO : feed in ghost cells
     uchar next_board_segment[(IMWD/2)][(IMHT/2)];
     uchar a;
     uchar count = 0;
     uchar send_permission = 1;
 
-    for(int i = 0; i < (IMHT/2); i++) {
-        for(int j = 0; j < (IMWD/2); j++) {
+    for(int i = 0; i < ((IMHT/2)+2); i++) {
+        for(int j = 0; j < ((IMWD/2)+2); j++) {
             worker_distributor :> board_segment[j][i];
         }
     }
     printf("Worker %d data in complete \n", id);
+
     //PROCESSING
 
-    for(int y = 0; y < (IMHT/2); y ++) {
-        for(int x = 0; x < (IMWD/2); x ++) { //for all the cells in the board
+    for(int y = 1; y < ((IMHT/2)+1); y ++) {
+        for(int x = 1; x < ((IMWD/2)+1); x ++) { //for all the cells in the board
             //calculate the adjacent cells
-            for (uchar k=-1; k<=1; k++) { //TODO: Adapt this logic to work with our ghost cells
-                        for (uchar l=-1; l<=1; l++) {
 
-                            if (k || l) {
-                                if (board_segment[xadd(x,k)][yadd(y,l)] == 255) {
+            for (int k=-1; k<=1; k++) {
+                        for (int l=-1; l<=1; l++) {
+                            if (k || l/*== 1 || l == 1 || k == -1 || l == -1*/) {
+                                if (board_segment[ x + l ][ y + k ] == 255) {
                                     count++;
                                 }
                             }
@@ -72,26 +87,22 @@ void Worker(int id, chanend worker_distributor) {
             }
 
             a = count;
+
             //calculate whether the cell should die
             if(board_segment[x][y] == 255) {
                     if( a < 2 || a > 3) {
-                        //worker_distributor <: 0;
-                        next_board_segment[x][y] = 0;
+                        next_board_segment[x-1][y-1] = 0;
                     }
                     else {
-                        //worker_distributor <: 255;
-                        next_board_segment[x][y] = 255;
-                        printf("\n\n255\n\n");
+                        next_board_segment[x-1][y-1] = 255;
                     }
             }
             else {
                 if( a == 3) {
-                    //worker_distributor <: 255;
-                    next_board_segment[x][y] = 255;
+                    next_board_segment[x-1][y-1] = 255;
                 }
                 else {
-                    //worker_distributor <: 0;
-                    next_board_segment[x][y] = 0;
+                    next_board_segment[x-1][y-1] = 0;
                 }
             }
 
@@ -100,13 +111,14 @@ void Worker(int id, chanend worker_distributor) {
     printf("Worker %d processing complete \n", id);
 
     worker_distributor <: id;
-    //worker_distributor :> send_permission;
-    printf("Worker %d permission granted\n", id);
 
     if(send_permission == 1) {
         for(int y = 0; y < (IMHT/2); y ++) {
                     for(int x = 0; x < (IMWD/2); x ++) {
                         worker_distributor <: next_board_segment[x][y];
+                        if(next_board_segment[x][y] == 255) {
+                            //printf("255 sent to distrib\n");
+                        }
                     }
         }
     }
@@ -189,7 +201,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distribut
         int offset_y = 0;
 
 //TODO: make for loop parallel
-        for(int i = 0; i < 4; i ++) {
+       par for(int i = 0; i < 4; i ++) {
             if(i == 0) {
                 offset_x = 0;
                 offset_y = 0;
@@ -207,9 +219,9 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distribut
                 offset_y = (IMHT/2);
             }
 
-              for(int j = 0; j < (IMHT/2); j ++) { //TODO: Give workers their ghost cells
-                  for(int k = 0; k < (IMWD/2); k++) {
-                      distributor_worker[i] <: current_board[offset_x + k][offset_y + j];
+              for(int j = -1; j < ((IMHT/2)+1); j ++) { //TODO: Give workers their ghost cells
+                  for(int k = -1; k < ((IMWD/2)+1); k++) {
+                      distributor_worker[i] <: current_board[xadd( offset_x, k )][yadd( offset_y, j )];
                   }
               }
         }
@@ -218,7 +230,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distribut
             select {
                        case distributor_worker[int j] :> int data:
                        printf("channel %d gets %d data\n", j, data);
-                       //distributor_worker[j] <: 1;
+
                        if(j == 0) {
                            offset_x = 0;
                            offset_y = 0;
@@ -262,7 +274,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend distribut
   for( int j = 0; j < IMHT; j++ ) {
       printf("\n");
           for( int i = 0; i < IMWD; i++ ) {
-                 printf( "-%4.1d ", current_board[i][j]);
+                 //printf( "-%4.1d ", current_board[i][j]);
                  c_out <: (uchar)current_board[i][j];
              }
   }
@@ -354,15 +366,13 @@ int main(void) {
 
 i2c_master_if i2c[1];               //interface to orientation
 
-//char infname[] = "64x64.pgm";     //put your input image path here
-//char outfname[] = "testout64.pgm"; //put your output image path here
 chan c_inIO, c_outIO, c_control, distributor_worker[4];    //extend your channel definitions here
 
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream("64x64.pgm", c_inIO);          //thread to read in a PGM image
-    on tile[1] : DataOutStream("testout64.pgm", c_outIO);       //thread to write out a PGM image
+    on tile[0] : DataInStream("test.pgm", c_inIO);          //thread to read in a PGM image
+    on tile[1] : DataOutStream("testout.pgm", c_outIO);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, distributor_worker);//thread to coordinate work on image
     on tile[1] : Worker(1, distributor_worker[0]);
     on tile[1] : Worker(2, distributor_worker[1]);
