@@ -7,9 +7,11 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 128                 //image height
-#define  IMWD 128                  //image width
+#define  IMHT 64                 //image height
+#define  IMWD 64                  //image width
 #define  num_workers 4
+#define GetBit(var, bit) ((var & (1 << bit)) != 0) // Returns true / false if bit is set
+#define SetBit(var, bit) (var |= (1 << bit))
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -46,12 +48,9 @@ int yadd (int i, int a) {
 }
 
 void Worker(uchar id, chanend worker_distributor) {
-    //printf("Worker %d started\n", id);
     uchar board_segment[(IMWD/2)+ 2 ][(IMHT/(num_workers/2))+ 2 ];
-    //uchar next_board_segment[(IMWD/2)][(IMHT/(num_workers/2))];
     uchar a;
     uchar count = 0;
-//    uchar send_permission = 1;
     uchar processing = 1;
 
     while (processing){
@@ -159,11 +158,17 @@ void DataInStream(char infname[], chanend c_out)
   for( int y = 0; y < IMHT; y++ ) {
     _readinline( line, IMWD );
     for( int x = 0; x < IMWD; x++ ) {
-      c_out <: line[ x ];
-      //printf( "-%4.1d ", line[ x ] ); //show image values
+
+//            if (line[x] == 255) line[x] = 1;
+//
+//            for( int z = 0; z < 8; z++ ) {
+//                byte |= line[x] << z;
+//            }
+
+        c_out <: line[ x ];
     }
-    //printf( "\n" );
   }
+
 
   //Close PGM image file
   _closeinpgm();
@@ -185,7 +190,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   uchar processing_rounds;
   uchar max_rounds;
   uchar current_board[IMWD][IMHT];
-//  uchar new_board[IMWD][IMHT];
   uchar workers_finished;
   uchar data_in_complete = 0;
   uchar button_input;
@@ -204,6 +208,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
       for( int y = 0; y < IMHT; y++ ) {   //go through all lines
           for( int x = 0; x < IMWD; x++ ) { //go through each pixel per line
               c_in :> current_board[x][y]; //read in and store pixel value
+
           }
       }
       data_in_complete = 1;
@@ -423,8 +428,8 @@ chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dis
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream("128x128.pgm", c_inIO);          //thread to read in a PGM image
-    on tile[1] : DataOutStream("testout128.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : DataInStream("64x64.pgm", c_inIO);          //thread to read in a PGM image
+    on tile[1] : DataOutStream("testout64.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
