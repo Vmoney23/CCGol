@@ -7,8 +7,8 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 16                 //image height
-#define  IMWD 16                  //image width
+#define  IMHT 128                 //image height
+#define  IMWD 128                  //image width
 #define  num_workers 4
 
 typedef unsigned char uchar;      //using uchar as shorthand
@@ -48,7 +48,7 @@ int yadd (int i, int a) {
 void Worker(uchar id, chanend worker_distributor) {
     //printf("Worker %d started\n", id);
     uchar board_segment[(IMWD/2)+ 2 ][(IMHT/(num_workers/2))+ 2 ];
-    uchar next_board_segment[(IMWD/2)][(IMHT/(num_workers/2))];
+    //uchar next_board_segment[(IMWD/2)][(IMHT/(num_workers/2))];
     uchar a;
     uchar count = 0;
 //    uchar send_permission = 1;
@@ -185,7 +185,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   uchar processing_rounds;
   uchar max_rounds;
   uchar current_board[IMWD][IMHT];
-  uchar new_board[IMWD][IMHT];
+//  uchar new_board[IMWD][IMHT];
   uchar workers_finished;
   uchar data_in_complete = 0;
   uchar button_input;
@@ -215,8 +215,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   max_rounds = 100;
 
   while((processing_rounds < max_rounds) && data_in_complete) {
-      //if(data out request == 1) { do a print} else jsut run the code
-//      c_out :> please_output;
 //      printf("processing round %d begun..\n", processing_rounds+1);
       select {
           case c_out :> please_output: {
@@ -268,7 +266,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
 
         while(workers_finished<num_workers) {
-            select {
+           par select {
                case distributor_worker[uchar j] :> uchar data:
                //printf("channel %d gets %d data\n", j, data);
 
@@ -291,7 +289,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
                for(int l = 0; l < (IMHT/(num_workers/2)); l ++) {
                    for(int k = 0; k < (IMWD/2); k++) {
-                       distributor_worker[j] :> new_board[offset_x + k][offset_y + l];
+                       distributor_worker[j] :> current_board[offset_x + k][offset_y + l];
                    }
                }
 
@@ -299,12 +297,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
                break;
            }
-        }
-
-        for(int j = 0; j < (IMHT); j ++) {
-              for(int k = 0; k < (IMWD); k++) {
-                  current_board[k][j] = new_board[k][j];
-              }
         }
 
         printf( "%d processing round completed...\n", (processing_rounds+1));
@@ -411,7 +403,6 @@ void button_listener(in port b, chanend to_dist, chanend to_dataout) {
         if (input == 14) {
             to_dist <: input;
             printf("SW1...\n");
-//            to_dataout <: input;
         } else if (input == 13) {
             to_dataout <: input;
         }
@@ -432,8 +423,8 @@ chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dis
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream("test.pgm", c_inIO);          //thread to read in a PGM image
-    on tile[1] : DataOutStream("testout16.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : DataInStream("128x128.pgm", c_inIO);          //thread to read in a PGM image
+    on tile[1] : DataOutStream("testout128.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
