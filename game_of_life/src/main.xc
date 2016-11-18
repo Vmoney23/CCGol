@@ -7,8 +7,8 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 256                 //image height
-#define  IMWD 256                  //image width
+#define  IMHT 16                 //image height
+#define  IMWD 16                  //image width
 #define  num_workers 4
 
 typedef unsigned char uchar;      //using uchar as shorthand
@@ -17,7 +17,7 @@ on tile[0] : port p_scl = XS1_PORT_1E;         //interface ports to orientation
 on tile[0] : port p_sda = XS1_PORT_1F;
 
 on tile[0] : in port buttons = XS1_PORT_4E; //port for buttons
-on tile[1] : out port leds = XS1_PORT_4F; //port for leds
+//on tile[1] : out port leds = XS1_PORT_4F; //port for leds
 
 #define FXOS8700EQ_I2C_ADDR 0x1E  //register addresses for orientation
 #define FXOS8700EQ_XYZ_DATA_CFG_REG 0x0E
@@ -64,7 +64,7 @@ void Worker(uchar id, chanend worker_distributor) {
 
 
     //PROCESSING
-
+    worker_distributor <: (uchar)id;
     for(int y = 1; y < (IMHT/(num_workers/2)+1); y ++) {
         for(int x = 1; x < ((IMWD/2)+1); x ++) { //for all the cells in the board
             //calculate the adjacent cells
@@ -81,39 +81,58 @@ void Worker(uchar id, chanend worker_distributor) {
 
             a = count;
 
-            //calculate whether the cell should die
-            if(board_segment[x][y] == 255) {
-                    if( a < 2 || a > 3) {
-                        next_board_segment[x-1][y-1] = 0;
-                    }
-                    else {
-                        next_board_segment[x-1][y-1] = 255;
-                    }
-            }
-            else {
-                if(a == 3) {
-                    next_board_segment[x-1][y-1] = 255;
-                }
-                else {
-                    next_board_segment[x-1][y-1] = 0;
-                }
-            }
-
-        }
-    }
-    //printf("Worker %d processing complete \n", id);
-
-    worker_distributor <: (uchar)id;
-
-//    if(send_permission == 1) {
-        for(int y = 0; y < (IMHT/(num_workers/2)); y++) {
-                for(int x = 0; x < (IMWD/2); x++) {
-                    worker_distributor <: next_board_segment[x][y];
-                }
-        }
+//            //calculate whether the cell should die
+//            if(board_segment[x][y] == 255) {
+//                    if( a < 2 || a > 3) {
+//                        next_board_segment[x-1][y-1] = 0;
+//                    }
+//                    else {
+//                        next_board_segment[x-1][y-1] = 255;
+//                    }
+//            }
+//            else {
+//                if(a == 3) {
+//                    next_board_segment[x-1][y-1] = 255;
+//                }
+//                else {
+//                    next_board_segment[x-1][y-1] = 0;
+//                }
+//            }
+//
+//        }
 //    }
-    //printf("\nWorker %d finished\n", id);
-        worker_distributor :> processing;
+//    //printf("Worker %d processing complete \n", id);
+//
+//    worker_distributor <: (uchar)id;
+//
+//    for(int y = 0; y < (IMHT/(num_workers/2)); y++) {
+//            for(int x = 0; x < (IMWD/2); x++) {
+//                worker_distributor <: next_board_segment[x][y];
+//            }
+//    }
+
+            //calculate whether the cell should die
+             if(board_segment[x][y] == 255) {
+                     if( a < 2 || a > 3) {
+                         worker_distributor <: (uchar) 0;
+                     }
+                     else {
+                         worker_distributor <: (uchar) 255;
+                     }
+             }
+             else {
+                 if(a == 3) {
+                     worker_distributor <: (uchar) 255;
+                 }
+                 else {
+                     worker_distributor <: (uchar) 0;
+                 }
+             }
+
+         }
+     }
+
+    worker_distributor :> processing;
     }
 }
 
@@ -160,7 +179,7 @@ void DataInStream(char infname[], chanend c_out)
 // Currently the function just inverts the image
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButtons, chanend distributor_worker[4])
+void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButtons, chanend distributor_worker[num_workers])
 {
 //  uchar val;
   uchar processing_rounds;
@@ -288,7 +307,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
               }
         }
 
-//        printf( "%d processing round completed...\n", (processing_rounds+1));
+        printf( "%d processing round completed...\n", (processing_rounds+1));
         processing_rounds++;
         if (processing_rounds < max_rounds) {
             for (uchar z = 0; z < num_workers; z++) {
@@ -296,6 +315,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
             }
         }
   }
+  printf("Processing complete...\n");
 
 }
 
@@ -407,13 +427,13 @@ int main(void) {
 
 i2c_master_if i2c[1];               //interface to orientation
 
-chan c_inIO, c_outIO, c_control, distributor_worker[4], buttons_to_dist, buttons_to_dataout;    //extend your channel definitions here
+chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dist, buttons_to_dataout;    //extend your channel definitions here
 
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream("256x256.pgm", c_inIO);          //thread to read in a PGM image
-    on tile[1] : DataOutStream("testout256.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : DataInStream("test.pgm", c_inIO);          //thread to read in a PGM image
+    on tile[1] : DataOutStream("testout16.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
