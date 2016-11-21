@@ -152,6 +152,7 @@ void DataInStream(char infname[], chanend c_out)
   printf( "DataInStream: Start...\n" );
   uchar packedline = 0;
   uchar packedx = 0;
+  uchar offsetx = 0;
 
   //Open PGM file
   res = _openinpgm( infname, IMWD, IMHT );
@@ -162,13 +163,13 @@ void DataInStream(char infname[], chanend c_out)
 
   //Read image line-by-line and send byte by byte to channel c_out
   for( int y = 0; y < IMHT; y++ ) {
+    offsetx = 0;
     _readinline( line, IMWD );
     for( int x = 0; x < (IMWD/8); x++ ) {
+
         packedline = 0;
         for( uchar z = 0; z < 8; z++ ) {
-            packedx = x+(x*(IMWD/8))+z;
-            //printf("y: %d, x: %d, z: %d, packed: %d\n", y, x, z, packedx);
-
+            packedx = offsetx+z;
             if (line[packedx] == 255) {
                 printf("255\n");
                 packedline |= (1 << z);
@@ -176,18 +177,9 @@ void DataInStream(char infname[], chanend c_out)
             else if (line[packedx] == 0){
                 packedline &= ~(1 << z);
             }
-            //printf("%d, line sent to dist\n", packedline);
         }
+        offsetx = offsetx + 8;
         c_out <: packedline;
-
-
-//            if (line[x] == 255) line[x] = 1;
-//
-//            for( int z = 0; z < 8; z++ ) {
-//                byte |= line[x] << z;
-//            }
-
-//        c_out <: line[ x ];
     }
   }
 
