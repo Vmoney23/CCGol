@@ -54,21 +54,21 @@ int xadd2 (int i, int a) {
 
 int xmod (int byteindex) {
     int newIndex;
+    int width = IMWD/8;
     if(byteindex == (-1)) newIndex = 0;
     if(byteindex == 0) newIndex = 1;
     if(byteindex == 1) newIndex = 2;
     return newIndex;
 }
 
-
 uchar GetCell(uchar byte, uchar index) {
     uchar cell;
-    cell = (((byte << (index)) >> (7)) &1);
+    cell = (((byte << (index)) >> (7)) & 1);
     return cell;
 }
 
 void Worker(uchar id, chanend worker_distributor) {
-    uchar board_segment[(IMWD/16)+ 2 ][(IMHT/(num_workers/2))+ 2 ];
+    uchar board_segment[((IMWD/2)/8)+ 2 ][(IMHT/(num_workers/2))+ 2 ];
     uchar a;
     uchar count = 0;
     uchar processing = 1;
@@ -103,9 +103,9 @@ void Worker(uchar id, chanend worker_distributor) {
     //PROCESSING
     worker_distributor <: (uchar)id;
     for(int y = 1; y < (IMHT/(num_workers/2)+1); y ++) {
-        offset = 0;
+//        offset = 0;
         byteindex = 0;
-        for(int x = 1; x < ((IMWD/8)); x ++) { //for all the cells in the board check the number of adjacent cells
+        for(int x = 1; x < ((IMWD/16)+1); x ++) { //for all the cells in the board check the number of adjacent cells
 //            packedline = board_segment[x][y];
             for( uchar z = 0; z < 8; z++ ) {
                 count = 0;
@@ -113,11 +113,11 @@ void Worker(uchar id, chanend worker_distributor) {
                 for (int k=-1; k<=1; k++) {
                     for (int l=-1; l<=1; l++) {
                         if(k || l) {
-                            if(z + l > 7) {
+                            if((z + l) > 7) {
                                 byteindex = x+1;
                                 cellindex = 0;
                             }
-                            else if(z + l < 0) {
+                            else if((z + l) < 0) {
                                 byteindex = x-1;
                                 cellindex = 7;
                             }
@@ -164,7 +164,7 @@ void Worker(uchar id, chanend worker_distributor) {
                      }
                  }
             }
-            offset = offset + 1;
+//            offset = offset + 1;
          }
 
      }
@@ -365,7 +365,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                               packedline |= (0 << z);
                           }
                        }
-                       current_board[xadd2(offset_x,k)][yadd(offset_y, l)] = packedline;
+                       current_board[xadd2(offset_x, k)][yadd(offset_y, l)] = packedline;
                        //printf("packedline: %d\n", packedline);
                    }
                }
@@ -399,7 +399,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
   }
   printf("Processing complete...\n");
-  printf( "%d processing round completed...\n", (processing_rounds+1));
+  printf( "%d processing round completed...\n", (processing_rounds));
          for( int y = 0; y < IMHT; y++ ) {   //go through all lines
                      for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
                          for( uchar z = 0; z < 8; z++ ) {
@@ -410,7 +410,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                      }
                      printf("\n");
          }
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +421,10 @@ void DataOutStream(char outfname[], chanend c_in, chanend from_buttons)
 {
   while(1) {
     uchar SW2_button_in;
-  from_buttons :> SW2_button_in;
+    uchar packedline = 0;
+    uchar packedx = 0;
+    uchar offsetx = 0;
+    from_buttons :> SW2_button_in;
 //  printf("SW2 pressed...\n");
 //      if (SW2_button_in == 13) {
           c_in <: (uchar) 1;
@@ -440,8 +442,18 @@ void DataOutStream(char outfname[], chanend c_in, chanend from_buttons)
 
           //Compile each line of the image and write the image line-by-line
           for( int y = 0; y < IMHT; y++ ) {
-            for( int x = 0; x < IMWD; x++ ) {
-              c_in :> line[ x ];
+              offsetx = 0;
+            for( int x = 0; x < IMWD/8; x++ ) {
+                c_in :> packedline;
+                for( uchar z = 0; z < 8; z++ ) {
+                    packedx = offsetx+z;
+                    if (GetCell(packedline, z) == 1) {
+                        line[packedx] = 255;
+                    }
+                    else if (line[packedx] == 0){
+                        line[packedx] = 0;
+                    }
+                }
             }
             _writeoutline( line, IMWD );
             //printf( "DataOutStream: Line written...\n" );
