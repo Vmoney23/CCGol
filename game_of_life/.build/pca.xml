@@ -1017,6 +1017,12 @@
     </values>
   </arg>
 </fInfo>
+<fInfo name="xmod" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="1">
+  <arg num="0" specialize="false">
+    <values>
+    </values>
+  </arg>
+</fInfo>
 <fInfo name="yadd" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="2">
   <arg num="0" specialize="false">
     <values>

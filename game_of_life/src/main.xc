@@ -52,9 +52,18 @@ int xadd2 (int i, int a) {
     return i;
 }
 
+int xmod (int byteindex) {
+    int newIndex;
+    if(byteindex == (-1)) newIndex = 0;
+    if(byteindex == 0) newIndex = 1;
+    if(byteindex == 1) newIndex = 2;
+    return newIndex;
+}
+
+
 uchar GetCell(uchar byte, uchar index) {
     uchar cell;
-    cell = (((byte << (7-index)) >>index)&1);
+    cell = (((byte << (index)) >> (7)) &1);
     return cell;
 }
 
@@ -64,8 +73,8 @@ void Worker(uchar id, chanend worker_distributor) {
     uchar count = 0;
     uchar processing = 1;
     uchar offset;
-    uchar packedline = 0;
-    uchar boardindex = 0;
+//    uchar packedline = 0;
+    uchar byteindex = 0;
     uchar cellindex = 0;
 
     while (processing){
@@ -77,8 +86,8 @@ void Worker(uchar id, chanend worker_distributor) {
     //printf("Worker %d data in complete \n", id);
 
 //    if(id == 1) {
-//        for( int y = 1; y < (IMHT/2)+1; y++ ) {   //go through all lines
-//                           for( int x = 1; x < (IMWD/8)+1; x++ ) { //go through each pixel per line
+//        for( int y = 0; y < (IMHT/2)+2; y++ ) {   //go through all lines
+//                           for( int x = 1; x < (IMWD/8); x++ ) { //go through each pixel per line
 //                               for( uchar z = 0; z < 8; z++ ) {
 //                                   printf("-%2.1d", ((board_segment[x][y] >> z)&1)); //read pixel value
 //                               }
@@ -95,9 +104,9 @@ void Worker(uchar id, chanend worker_distributor) {
     worker_distributor <: (uchar)id;
     for(int y = 1; y < (IMHT/(num_workers/2)+1); y ++) {
         offset = 0;
-        boardindex = 0;
-        for(int x = 1; x < ((IMWD/8)+1); x ++) { //for all the cells in the board check the number of adjacent cells
-            packedline = board_segment[x][y];
+        byteindex = 0;
+        for(int x = 1; x < ((IMWD/8)); x ++) { //for all the cells in the board check the number of adjacent cells
+//            packedline = board_segment[x][y];
             for( uchar z = 0; z < 8; z++ ) {
                 count = 0;
 
@@ -105,17 +114,19 @@ void Worker(uchar id, chanend worker_distributor) {
                     for (int l=-1; l<=1; l++) {
                         if(k || l) {
                             if(z + l > 7) {
-                                boardindex = 1;
+                                byteindex = x+1;
                                 cellindex = 0;
                             }
                             else if(z + l < 0) {
-                                boardindex = -1;
+                                byteindex = x-1;
                                 cellindex = 7;
                             }
                             else {
+                                byteindex = x;
                                 cellindex = z + l;
                             }
-                            if(GetCell(board_segment[xadd2(offset, boardindex)][yadd(y, k)], cellindex)) {
+//                            if(GetCell(board_segment[xadd2(offset, byteindex)][yadd(y, k)], cellindex)) {
+                            if(GetCell(board_segment[byteindex][y+k], cellindex)) {
                                 count++;
                             }
                         }
@@ -125,28 +136,30 @@ void Worker(uchar id, chanend worker_distributor) {
 
 
                 a = count;
-                //printf("count: %d\n", count);
+
 
 
                 //calculate whether the cell should die
-                 if(GetCell(board_segment[offset][y], cellindex) == 1) {
+                 if(GetCell(board_segment[x][y], z) == 1) {
+                     //printf("count: %d\n", count);
 
                          if( a < 2 || a > 3) {
-                             printf("cell dies\n");
+
                              worker_distributor <: (uchar) 0;
                          }
                          else {
-                             printf("cell lives\n");
+
                              worker_distributor <: (uchar) 1;
+                             //printf("staying alive\n");
                          }
                  }
                  else {
                      if(a == 3) {
-                         printf("cell is born\n");
+
                          worker_distributor <: (uchar) 1;
                      }
                      else {
-                         printf("cell dead\n");
+
                          worker_distributor <: (uchar) 0;
                      }
                  }
@@ -155,7 +168,7 @@ void Worker(uchar id, chanend worker_distributor) {
          }
 
      }
-    printf("worker %d finished\n", id);
+    //printf("worker %d finished\n", id);
 
     worker_distributor :> processing;
     }
@@ -196,7 +209,7 @@ void DataInStream(char infname[], chanend c_out)
                 packedline |= (1 << z);
             }
             else if (line[packedx] == 0){
-                packedline &= ~(1 << z);
+                packedline |= (0 << z);
             }
         }
         offsetx = offsetx + 8;
@@ -249,14 +262,14 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
       data_in_complete = 1;
 
       for( int y = 0; y < IMHT; y++ ) {   //go through all lines
-                for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
-                    for( uchar z = 0; z < 8; z++ ) {
-                        printf("-%2.1d", ((current_board[x][y] >> z)&1)); //read pixel value
-                    }
-
-
+            for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
+                for( uchar z = 0; z < 8; z++ ) {
+                    printf("-%2.1d", ((current_board[x][y] >> z)&1)); //read pixel value
                 }
-                printf("\n");
+
+
+            }
+            printf("\n");
       }
 
   }
@@ -282,7 +295,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
           }
           default: {
               please_output = 0;
-//              printf("Output not requested...\n");
+              printf("Output not requested...\n");
               break;
           }
       }
@@ -315,7 +328,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                   }
               }
         }
-       printf("data sent to workers...\n");
+       //printf("data sent to workers...\n");
 
         while(workers_finished<num_workers) {
            par select {
@@ -346,13 +359,14 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                           distributor_worker[j] :> from_worker_val;
                           if(from_worker_val) {
                               packedline |= (1 << z);
+
                           }
                           else {
-                              packedline &= ~(1 << z);
+                              packedline |= (0 << z);
                           }
                        }
-                       printf("packed line: %d\n", packedline);
-                       current_board[xadd2(offset_x, k)][yadd(offset_y, l)] = packedline;
+                       current_board[xadd2(offset_x,k)][yadd(offset_y, l)] = packedline;
+                       //printf("packedline: %d\n", packedline);
                    }
                }
 
@@ -362,7 +376,18 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
            }
         }
 
-        printf( "%d processing round completed...\n", (processing_rounds+1));
+//        printf( "%d processing round completed...\n", (processing_rounds+1));
+//        for( int y = 0; y < IMHT; y++ ) {   //go through all lines
+//                    for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
+//                        for( uchar z = 0; z < 8; z++ ) {
+//                            printf("-%2.1d", ((current_board[x][y] >> z) &1)); //read pixel value
+//                        }
+//
+//
+//                    }
+//                    printf("\n");
+//        }
+
 
 
 
@@ -374,6 +399,17 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
   }
   printf("Processing complete...\n");
+  printf( "%d processing round completed...\n", (processing_rounds+1));
+         for( int y = 0; y < IMHT; y++ ) {   //go through all lines
+                     for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
+                         for( uchar z = 0; z < 8; z++ ) {
+                             printf("-%2.1d", ((current_board[x][y] >> z) &1)); //read pixel value
+                         }
+
+
+                     }
+                     printf("\n");
+         }
 
 }
 
