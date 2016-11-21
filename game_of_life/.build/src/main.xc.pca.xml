@@ -1,6 +1,7 @@
 <preCompilationAnalysis file="../src/main.xc">
 <fDef name="DataInStream" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fDef name="DataOutStream" global="true" noreturn="false" doNotSpecialize="false" numParams="3"/>
+<fDef name="GetCell" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fDef name="Worker" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fDef name="_safe_memcmp" global="true" noreturn="false" doNotSpecialize="true" numParams="3"/>
 <fDef name="_safe_memmove" global="true" noreturn="false" doNotSpecialize="true" numParams="3"/>
@@ -42,6 +43,7 @@
 <fDef name="write_reg16_addr8" global="true" interface="i2c_master_if" noreturn="false" doNotSpecialize="true" numParams="4"/>
 <fDef name="write_reg8_addr16" global="true" interface="i2c_master_if" noreturn="false" doNotSpecialize="true" numParams="4"/>
 <fDef name="xadd" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="xadd2" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fDef name="yadd" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
 <fCall name="delay_ticks_longlong" global="true" numArgs="1">
   <arg num="0">
@@ -445,6 +447,94 @@
     </values>
   </arg>
 </fCall>
+<fCall name="GetCell" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="xadd2" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="yadd" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="GetCell" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
 <fCall name="printf" global="true" numArgs="1">
   <arg num="0">
     <values>
@@ -490,13 +580,6 @@
   <arg num="1">
     <values>
       <value type="intval"><intval isSigned="true" val="16"/></value>
-    </values>
-  </arg>
-</fCall>
-<fCall name="printf" global="true" numArgs="1">
-  <arg num="0">
-    <values>
-      <value type="unknown"/>
     </values>
   </arg>
 </fCall>
@@ -566,7 +649,69 @@
     </values>
   </arg>
 </fCall>
-<fCall name="xadd" global="true" numArgs="2">
+<fCall name="printf" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="xadd2" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="yadd" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="printf" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="xadd2" global="true" numArgs="2">
   <arg num="0">
     <values>
       <value type="unknown"/>
