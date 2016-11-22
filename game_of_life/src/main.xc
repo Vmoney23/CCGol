@@ -54,7 +54,7 @@ int xadd2 (int i, int a) {
 
 int xmod (int byteindex) {
     int newIndex;
-    int width = IMWD/8;
+//    int width = IMWD/8;
     if(byteindex == (-1)) newIndex = 0;
     if(byteindex == 0) newIndex = 1;
     if(byteindex == 1) newIndex = 2;
@@ -68,12 +68,13 @@ uchar GetCell(uchar byte, uchar index) {
 }
 
 void Worker(uchar id, chanend worker_distributor) {
-    uchar board_segment[((IMWD/2)/8)+ 2 ][(IMHT/(num_workers/2))+ 2 ];
+    uchar board_segment[((IMWD/2)/8)+ 2 ][(IMHT/(num_workers/2))+ 2];
+    uchar next_segment[((IMWD/2)/8) + 2][(IMHT/(num_workers/2)) + 2];
     uchar a;
     uchar count = 0;
     uchar processing = 1;
     uchar offset;
-//    uchar packedline = 0;
+    uchar packedline = 0;
     uchar byteindex = 0;
     uchar cellindex = 0;
 
@@ -106,7 +107,7 @@ void Worker(uchar id, chanend worker_distributor) {
 //        offset = 0;
         byteindex = 0;
         for(int x = 1; x < ((IMWD/16)+1); x ++) { //for all the cells in the board check the number of adjacent cells
-//            packedline = board_segment[x][y];
+            packedline = 0;
             for( uchar z = 0; z < 8; z++ ) {
                 count = 0;
 
@@ -134,42 +135,39 @@ void Worker(uchar id, chanend worker_distributor) {
                     }
                 }
 
-
                 a = count;
-
-
 
                 //calculate whether the cell should die
                  if(GetCell(board_segment[x][y], z) == 1) {
                      //printf("count: %d\n", count);
 
                          if( a < 2 || a > 3) {
-
-                             worker_distributor <: (uchar) 0;
+                             packedline |= (0 << z);
+//                             worker_distributor <: (uchar) 0;
                          }
                          else {
-
-                             worker_distributor <: (uchar) 1;
+                             packedline |= (1 << z);
+//                             worker_distributor <: (uchar) 1;
                              //printf("staying alive\n");
                          }
                  }
                  else {
                      if(a == 3) {
-
-                         worker_distributor <: (uchar) 1;
+                         packedline |= (1 << z);
+//                         worker_distributor <: (uchar) 1;
                      }
                      else {
-
-                         worker_distributor <: (uchar) 0;
+                         packedline |= (0 << z);
+//                         worker_distributor <: (uchar) 0;
                      }
                  }
-            }
+            } // z loop
+            next_segment[x][y] = packedline;
+            worker_distributor <: next_segment[x][y];
 //            offset = offset + 1;
-         }
-
-     }
+         } // x loop
+     } // y loop
     //printf("worker %d finished\n", id);
-
     worker_distributor :> processing;
     }
 }
@@ -201,7 +199,6 @@ void DataInStream(char infname[], chanend c_out)
     offsetx = 0;
     _readinline( line, IMWD );
     for( int x = 0; x < (IMWD/8); x++ ) {
-
         packedline = 0;
         for( uchar z = 0; z < 8; z++ ) {
             packedx = offsetx+z;
@@ -243,7 +240,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   uchar button_input;
   uchar please_output;
   uchar packedline = 0;
-  uchar from_worker_val = 0;
+//  uchar from_worker_val = 0;
 
   //Starting up and wait for tilting of the xCore-200 Explorer
   printf( "ProcessImage: Start, size = %dx%d\n", IMHT, IMWD );
@@ -355,17 +352,17 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                for(int l = 0; l < (IMHT/(num_workers/2)); l ++) {
                    packedline = 0;
                    for(int k = 0; k < (IMWD/16); k++) {
-                       for( uchar z = 0; z < 8; z++ ) {
-                          distributor_worker[j] :> from_worker_val;
-                          if(from_worker_val) {
-                              packedline |= (1 << z);
-
-                          }
-                          else {
-                              packedline |= (0 << z);
-                          }
-                       }
-                       current_board[xadd2(offset_x, k)][yadd(offset_y, l)] = packedline;
+//                       for( uchar z = 0; z < 8; z++ ) {
+//                          distributor_worker[j] :> from_worker_val;
+//                          if(from_worker_val) {
+//                              packedline |= (1 << z);
+//
+//                          }
+//                          else {
+//                              packedline |= (0 << z);
+//                          }
+//                       }
+                       distributor_worker[j] :> current_board[xadd2(offset_x, k)][yadd(offset_y, l)];
                        //printf("packedline: %d\n", packedline);
                    }
                }
@@ -448,10 +445,10 @@ void DataOutStream(char outfname[], chanend c_in, chanend from_buttons)
                 for( uchar z = 0; z < 8; z++ ) {
                     packedx = offsetx+z;
                     if (GetCell(packedline, z) == 1) {
-                        line[packedx] = 255;
+                        line[z] = 255;
                     }
                     else if (line[packedx] == 0){
-                        line[packedx] = 0;
+                        line[z] = 0;
                     }
                 }
             }
