@@ -69,11 +69,11 @@ uchar GetCell(uchar byte, uchar index) {
 
 void Worker(uchar id, chanend worker_distributor) {
     uchar board_segment[((IMWD/2)/8)+ 2 ][(IMHT/(num_workers/2))+ 2];
-    uchar next_segment[((IMWD/2)/8) + 2][(IMHT/(num_workers/2)) + 2];
+    uchar next_segment[((IMWD/2)/8)+1][(IMHT/(num_workers/2))];
     uchar a;
     uchar count = 0;
     uchar processing = 1;
-    uchar offset;
+    //uchar offset;
     uchar packedline = 0;
     uchar byteindex = 0;
     uchar cellindex = 0;
@@ -104,7 +104,6 @@ void Worker(uchar id, chanend worker_distributor) {
     //PROCESSING
     worker_distributor <: (uchar)id;
     for(int y = 1; y < (IMHT/(num_workers/2)+1); y ++) {
-//        offset = 0;
         byteindex = 0;
         for(int x = 1; x < ((IMWD/16)+1); x ++) { //for all the cells in the board check the number of adjacent cells
             packedline = 0;
@@ -161,13 +160,16 @@ void Worker(uchar id, chanend worker_distributor) {
 //                         worker_distributor <: (uchar) 0;
                      }
                  }
+                 if(id == 3) {
+                                    //printf("packedline: %d\n", packedline);
+                 }
             } // z loop
-            next_segment[x][y] = packedline;
-            worker_distributor <: next_segment[x][y];
+            worker_distributor <: packedline;
 //            offset = offset + 1;
          } // x loop
      } // y loop
     //printf("worker %d finished\n", id);
+
     worker_distributor :> processing;
     }
 }
@@ -274,7 +276,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   printf( "Processing...\n" );
 
   processing_rounds = 0;
-  max_rounds = 100;
+  max_rounds = 1;
 
   while((processing_rounds < max_rounds) && data_in_complete) {
       printf("processing round %d begun..\n", processing_rounds+1);
@@ -350,7 +352,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                }
 
                for(int l = 0; l < (IMHT/(num_workers/2)); l ++) {
-                   packedline = 0;
+                   //packedline = 0;
                    for(int k = 0; k < (IMWD/16); k++) {
 //                       for( uchar z = 0; z < 8; z++ ) {
 //                          distributor_worker[j] :> from_worker_val;
