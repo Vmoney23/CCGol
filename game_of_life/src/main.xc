@@ -254,7 +254,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   uchar data_in_complete = 0;
   uchar button_input;
   uchar please_output;
-  uchar packedline = 0;
+//uchar packedline = 0;
 //  uchar from_worker_val = 0;
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -276,12 +276,12 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
       for( int y = 0; y < IMHT; y++ ) {   //go through all lines
             for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
                 for( uchar z = 0; z < 8; z++ ) {
-                    printf("-%2.1d", ((current_board[x][y] >> z)&1)); //read pixel value
+                    //printf("-%2.1d", ((current_board[x][y] >> z)&1)); //read pixel value
                 }
 
 
             }
-            printf("\n");
+            //printf("\n");
       }
 
   }
@@ -289,7 +289,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   printf( "Processing...\n" );
 
   processing_rounds = 0;
-  max_rounds = 1;
+  max_rounds = 10;
 
   while((processing_rounds < max_rounds) && data_in_complete) {
       printf("processing round %d begun..\n", processing_rounds+1);
@@ -299,10 +299,12 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
               printf("Output requested...\n");
               for( int j = 0; j < IMHT; j++ ) {
                 for( int i = 0; i < (IMWD/8); i++ ) {
-                   //printf( "-%4.1d ", current_board[i][j]);
+                   printf( "-%4.1d ", current_board[i][j]);
                    c_out <: (uchar)current_board[i][j];
                 }
+                printf("\n");
               }
+
               break;
           }
           default: {
@@ -379,8 +381,8 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 //                       }
                        distributor_worker[j] :> current_board[xadd2(offset_x, k)][yadd(offset_y, l)];
 
-                       printf("id: %d\nx: %d; y: %d\n", j+1, xadd2(offset_x, k), yadd(offset_y, l));
-                       printf("recieved:  %d\n", current_board[xadd2(offset_x, k)][yadd(offset_y, l)]);
+                       //printf("id: %d\nx: %d; y: %d\n", j+1, xadd2(offset_x, k), yadd(offset_y, l));
+                       //printf("recieved:  %d\n", current_board[xadd2(offset_x, k)][yadd(offset_y, l)]);
 
                        //printf("packedline: %d\n", packedline);
                    }
@@ -441,43 +443,43 @@ void DataOutStream(char outfname[], chanend c_in, chanend from_buttons)
     uchar packedx = 0;
     uchar offsetx = 0;
     from_buttons :> SW2_button_in;
-//  printf("SW2 pressed...\n");
-//      if (SW2_button_in == 13) {
-          c_in <: (uchar) 1;
-          printf("DataOut request sent...\n");
-          int res;
-          uchar line[ IMWD ];
 
-          //Open PGM file
-          printf( "DataOutStream: Start...\n" );
-          res = _openoutpgm( outfname, IMWD, IMHT );
-          if( res ) {
-            printf( "DataOutStream: Error opening %s\n.", outfname );
-            return;
-          }
+    c_in <: (uchar) 1;
+    printf("DataOut request sent...\n");
+    int res;
+    uchar line[ IMWD ];
 
-          //Compile each line of the image and write the image line-by-line
-          for( int y = 0; y < IMHT; y++ ) {
-              offsetx = 0;
-            for( int x = 0; x < IMWD/8; x++ ) {
-                c_in :> packedline;
-                for( uchar z = 0; z < 8; z++ ) {
-                    packedx = offsetx+z;
-                    if (GetCell(packedline, z) == 1) {
-                        line[z] = 255;
-                    }
-                    else if (line[packedx] == 0){
-                        line[z] = 0;
-                    }
+    //Open PGM file
+    printf( "DataOutStream: Start...\n" );
+    res = _openoutpgm( outfname, IMWD, IMHT );
+    if( res ) {
+    printf( "DataOutStream: Error opening %s\n.", outfname );
+    return;
+    }
+
+    //Compile each line of the image and write the image line-by-line
+    for( int y = 0; y < IMHT; y++ ) {
+          offsetx = 0;
+        for( int x = 0; x < IMWD/8; x++ ) {
+            c_in :> packedline;
+            for( uchar z = 0; z < 8; z++ ) {
+                packedx = offsetx+z;
+                if (GetCell(packedline, z) == 1) {
+                    line[packedx] = 255;
+                }
+                else if (GetCell(packedline, z) == 0){
+                    line[packedx] = 0;
                 }
             }
-            _writeoutline( line, IMWD );
-            //printf( "DataOutStream: Line written...\n" );
-          }
-          //Close the PGM image
-          _closeoutpgm();
-          printf( "DataOutStream: Done...\n" );
-//      }
+            offsetx += 8;
+        }
+        _writeoutline( line, IMWD );
+        //printf( "DataOutStream: Line written...\n" );
+    }
+    //Close the PGM image
+    _closeoutpgm();
+    printf( "DataOutStream: Done...\n" );
+
   }
   return;
 }
