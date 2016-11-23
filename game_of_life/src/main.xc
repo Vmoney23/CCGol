@@ -7,8 +7,8 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 16                 //image height
-#define  IMWD 16                  //image width
+#define  IMHT 64                 //image height
+#define  IMWD 64                  //image width
 #define  num_workers 4
 
 typedef unsigned char uchar;      //using uchar as shorthand
@@ -46,9 +46,11 @@ int yadd (int i, int a) {
 }
 
 int xadd2 (int i, int a) {
+    int q = i;
     i += a;
-    while (i < 0) i += (IMWD/8);
-    while (i >= (IMWD/8)) i -= (IMWD/8);
+    while (i < 0) i += (IMWD/16);
+    while (i >= (IMWD/16)) i -= (IMWD/16);
+    //printf("xadd2: initial i+a: %d, i: %d\n", q+a, i);
     return i;
 }
 
@@ -69,7 +71,7 @@ uchar GetCell(uchar byte, uchar index) {
 
 void Worker(uchar id, chanend worker_distributor) {
     uchar board_segment[((IMWD/2)/8)+ 2 ][(IMHT/(num_workers/2))+ 2];
-    uchar next_segment[((IMWD/2)/8)+1][(IMHT/(num_workers/2))];
+  //  uchar next_segment[((IMWD/2)/8)+1][(IMHT/(num_workers/2))];
     uchar a;
     uchar count = 0;
     uchar processing = 1;
@@ -276,7 +278,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   printf( "Processing...\n" );
 
   processing_rounds = 0;
-  max_rounds = 1;
+  max_rounds = 100;
 
   while((processing_rounds < max_rounds) && data_in_complete) {
       printf("processing round %d begun..\n", processing_rounds+1);
@@ -309,7 +311,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                 offset_y = 0;
             }
             else if(i == 1) {
-                offset_x = (IMWD/8);
+                offset_x = (IMWD/16);
                 offset_y = 0;
             }
             else if(i == 2) {
@@ -317,7 +319,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                 offset_y = (IMHT/(num_workers/2));
             }
             else if(i == 3) {
-                offset_x = (IMWD/8);
+                offset_x = (IMWD/16);
                 offset_y = (IMHT/(num_workers/2));
             }
 
@@ -339,7 +341,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                    offset_y = 0;
                }
                else if(j == 1) {
-                   offset_x = (IMWD/8);
+                   offset_x = (IMWD/16);
                    offset_y = 0;
                }
                else if(j == 2) {
@@ -347,7 +349,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                    offset_y = (IMHT/(num_workers/2));
                }
                else if(j == 3) {
-                   offset_x = (IMWD/8);
+                   offset_x = (IMWD/16);
                    offset_y = (IMHT/(num_workers/2));
                }
 
@@ -536,8 +538,8 @@ chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dis
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream("test.pgm", c_inIO);          //thread to read in a PGM image
-    on tile[1] : DataOutStream("testout.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : DataInStream("64x64.pgm", c_inIO);          //thread to read in a PGM image
+    on tile[1] : DataOutStream("testout64.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
