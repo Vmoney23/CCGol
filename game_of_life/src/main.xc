@@ -7,8 +7,8 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 512                 //image height
-#define  IMWD 512                  //image width
+#define  IMHT 64                 //image height
+#define  IMWD 64                  //image width
 #define  num_workers 4
 
 typedef unsigned char uchar;      //using uchar as shorthand
@@ -251,18 +251,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
           }
       }
       data_in_complete = 1;
-
-//      for( int y = 0; y < IMHT; y++ ) {   //go through all lines
-//            for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
-//                for( uchar z = 0; z < 8; z++ ) {
-//                    //printf("-%2.1d", ((current_board[x][y] >> z)&1)); //read pixel value
-//                }
-//
-//
-//            }
-//            //printf("\n");
-//      }
-
   }
 
   printf( "Processing...\n" );
@@ -280,10 +268,10 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
               for( int j = 0; j < IMHT; j++ ) {
                 for( int i = 0; i < (IMWD/8); i++ ) {
-                   printf( "-%4.1d ", current_board[i][j]);
+                   //printf( "-%4.1d ", current_board[i][j]);
                    c_out <: (uchar)current_board[i][j];
                 }
-                printf("\n");
+                //printf("\n");
               }
 
               break;
@@ -293,13 +281,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
               //printf("Output not requested...\n");
               break;
           }
-      }
-
-      for( int j = 0; j < IMHT; j++ ) {
-        for( int i = 0; i < (IMWD/8); i++ ) {
-            printf( "-%4.1d ", current_board[i][j]);
-        }
-        printf("\n");
       }
 
        workers_finished = 0;
@@ -314,7 +295,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
        }
 
 
-       par for(int i = 0; i < num_workers; i++) {
+       par for(int i = 0; i < num_workers; i++) { //sending data to the workers
             if(i == 0) {
                 offset_x = 0;
                 offset_y = 0;
@@ -339,40 +320,34 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
               }
         }
 
-        while(workers_finished<num_workers) {
+        while(workers_finished<num_workers) { //recieving data from the workers
            par select {
                case distributor_worker[uchar j] :> uchar data:
 
-               if(j == 0) {
-                   offset_x = 0;
-                   offset_y = 0;
-               }
-               else if(j == 1) {
-                   offset_x = (IMWD/16);
-                   offset_y = 0;
-               }
-               else if(j == 2) {
-                   offset_x = 0;
-                   offset_y = (IMHT/(num_workers/2));
-               }
-               else if(j == 3) {
-                   offset_x = (IMWD/16);
-                   offset_y = (IMHT/(num_workers/2));
+                 switch(j) {
+                   case 0:
+                        offset_x = 0;
+                        offset_y = 0;
+                        break;
+
+                   case 1:
+                        offset_x = (IMWD/16);
+                        offset_y = 0;
+                        break;
+
+                   case 2:
+                        offset_x = 0;
+                        offset_y = (IMHT/(num_workers/2));
+                        break;
+
+                   case 3:
+                        offset_x = (IMWD/16);
+                        offset_y = (IMHT/(num_workers/2));
+                        break;
                }
 
                for(int l = 0; l < (IMHT/(num_workers/2)); l ++) {
-                   //packedline = 0;
                    for(int k = 0; k < (IMWD/16); k++) {
-//                       for( uchar z = 0; z < 8; z++ ) {
-//                          distributor_worker[j] :> from_worker_val;
-//                          if(from_worker_val) {
-//                              packedline |= (1 << z);
-//
-//                          }
-//                          else {
-//                              packedline |= (0 << z);
-//                          }
-//                       }
                        distributor_worker[j] :> current_board[xadd(offset_x, k)][yadd(offset_y, l)];
 
                        //printf("id: %d\nx: %d; y: %d\n", j+1, xadd2(offset_x, k), yadd(offset_y, l));
@@ -389,20 +364,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
 
         printf( "%d processing round completed...\n", (processing_rounds+1));
-//        for( int y = 0; y < IMHT; y++ ) {   //go through all lines
-//                    for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
-//                        for( uchar z = 0; z < 8; z++ ) {
-//                            printf("-%2.1d", ((current_board[x][y] >> z) &1)); //read pixel value
-//                        }
-//
-//
-//                    }
-//                    printf("\n");
-//        }
-
-
-
-
         processing_rounds++;
         if (processing_rounds < max_rounds) {
             for (uchar z = 0; z < num_workers; z++) {
@@ -562,8 +523,8 @@ chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dis
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream("512x512.pgm", c_inIO, leds_data_in);          //thread to read in a PGM image
-    on tile[1] : DataOutStream("testout512.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : DataInStream("test.pgm", c_inIO, leds_data_in);          //thread to read in a PGM image
+    on tile[1] : DataOutStream("testout.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker, leds_distributor);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
