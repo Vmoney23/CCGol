@@ -1001,23 +1001,7 @@
     </values>
   </arg>
 </fInfo>
-<fInfo name="xadd2" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="2">
-  <arg num="0" specialize="false">
-    <values>
-    </values>
-  </arg>
-  <arg num="1" specialize="false">
-    <values>
-    </values>
-  </arg>
-</fInfo>
 <fInfo name="xassert_msg" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="1">
-  <arg num="0" specialize="false">
-    <values>
-    </values>
-  </arg>
-</fInfo>
-<fInfo name="xmod" global="true" specialize="false" noreturn="false" doNotSpecialize="false" numParams="1">
   <arg num="0" specialize="false">
     <values>
     </values>
