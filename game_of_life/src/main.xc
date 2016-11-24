@@ -7,8 +7,8 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 1024                 //image height
-#define  IMWD 1024                  //image width
+#define  IMHT 512                 //image height
+#define  IMWD 512                  //image width
 #define  num_workers 4
 
 typedef unsigned char uchar;      //using uchar as shorthand
@@ -17,7 +17,7 @@ on tile[0] : port p_scl = XS1_PORT_1E;         //interface ports to orientation
 on tile[0] : port p_sda = XS1_PORT_1F;
 
 on tile[0] : in port buttons = XS1_PORT_4E; //port for buttons
-on tile[1] : out port leds = XS1_PORT_4F; //port for leds
+on tile[0] : out port leds = XS1_PORT_4F; //port for leds
 
 #define FXOS8700EQ_I2C_ADDR 0x1E  //register addresses for orientation
 #define FXOS8700EQ_XYZ_DATA_CFG_REG 0x0E
@@ -29,6 +29,7 @@ on tile[1] : out port leds = XS1_PORT_4F; //port for leds
 #define FXOS8700EQ_OUT_Y_LSB 0x4
 #define FXOS8700EQ_OUT_Z_MSB 0x5
 #define FXOS8700EQ_OUT_Z_LSB 0x6
+
 
 
 int xadd (int i, int a) {
@@ -43,9 +44,13 @@ int xadd (int i, int a) {
 }
 
 int yadd (int i, int a) {
-    i += a;
-    while (i < 0) i += IMHT;
-    while (i >= IMHT) i -= IMHT;
+    i = i + a;
+    while (i < 0) {
+        i = i + IMHT;
+    }
+    while (i >= IMHT) {
+        i = i - IMHT;
+    }
     return i;
 }
 
@@ -129,31 +134,28 @@ void Worker(uchar id, chanend worker_distributor) {
                      //printf("count: %d\n", count);
 
                          if( a < 2 || a > 3) {
-                             packedline |= (0 << z);
+                             packedline |= (0 << 7-z);
 //                             worker_distributor <: (uchar) 0;
                          }
                          else {
-                             packedline |= (1 << z);
+                             packedline |= (1 << 7-z);
 //                             worker_distributor <: (uchar) 1;
                              //printf("staying alive\n");
                          }
                  }
                  else {
                      if(a == 3) {
-                         packedline |= (1 << z);
+                         packedline |= (1 << 7-z);
 //                         worker_distributor <: (uchar) 1;
                      }
                      else {
-                         packedline |= (0 << z);
+                         packedline |= (0 << 7-z);
 //                         worker_distributor <: (uchar) 0;
                      }
                  }
 
             } // z loop
             worker_distributor <: packedline;
-            if(id == 3) {
-                                               // printf("packedline: %d\n", packedline);
-            }
 //            offset = offset + 1;
          } // x loop
      } // y loop
@@ -169,7 +171,7 @@ void Worker(uchar id, chanend worker_distributor) {
 // Read Image from PGM file from path infname[] to channel c_out
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-void DataInStream(char infname[], chanend c_out)
+void DataInStream(char infname[], chanend c_out, chanend to_leds)
 {
   int res;
   uchar line[ IMWD ];
@@ -184,9 +186,10 @@ void DataInStream(char infname[], chanend c_out)
     printf( "DataInStream: Error openening %s\n.", infname );
     return;
   }
-
+  to_leds <: 4;
   //Read image line-by-line and send byte by byte to channel c_out
   for( int y = 0; y < IMHT; y++ ) {
+//    to_leds <: 4;
     offsetx = 0;
     _readinline( line, IMWD );
     for( int x = 0; x < (IMWD/8); x++ ) {
@@ -194,10 +197,10 @@ void DataInStream(char infname[], chanend c_out)
         for( uchar z = 0; z < 8; z++ ) {
             packedx = offsetx+z;
             if (line[packedx] == 255) {
-                packedline |= (1 << z);
+                packedline |= (1 << 7-z);
             }
             else if (line[packedx] == 0){
-                packedline |= (0 << z);
+                packedline |= (0 << 7-z);
             }
         }
         offsetx = offsetx + 8;
@@ -220,7 +223,7 @@ void DataInStream(char infname[], chanend c_out)
 // Currently the function just inverts the image
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButtons, chanend distributor_worker[num_workers])
+void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButtons, chanend distributor_worker[num_workers], chanend to_leds)
 {
   uchar processing_rounds;
   uchar max_rounds;
@@ -229,6 +232,9 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   uchar data_in_complete = 0;
   uchar button_input;
   uchar please_output;
+  int offset_x;
+  int offset_y;
+
 
   //Starting up and wait for tilting of the xCore-200 Explorer
   printf( "ProcessImage: Start, size = %dx%d\n", IMHT, IMWD );
@@ -246,16 +252,16 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
       }
       data_in_complete = 1;
 
-      for( int y = 0; y < IMHT; y++ ) {   //go through all lines
-            for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
-                for( uchar z = 0; z < 8; z++ ) {
-                    //printf("-%2.1d", ((current_board[x][y] >> z)&1)); //read pixel value
-                }
-
-
-            }
-            //printf("\n");
-      }
+//      for( int y = 0; y < IMHT; y++ ) {   //go through all lines
+//            for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
+//                for( uchar z = 0; z < 8; z++ ) {
+//                    //printf("-%2.1d", ((current_board[x][y] >> z)&1)); //read pixel value
+//                }
+//
+//
+//            }
+//            //printf("\n");
+//      }
 
   }
 
@@ -270,6 +276,8 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
           case c_out :> please_output: {
               please_output = 1;
               printf("Output requested...\n");
+              to_leds <: 2;
+
               for( int j = 0; j < IMHT; j++ ) {
                 for( int i = 0; i < (IMWD/8); i++ ) {
                    printf( "-%4.1d ", current_board[i][j]);
@@ -287,16 +295,24 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
           }
       }
 
-//      for( int j = 0; j < IMHT; j++ ) {
-//                      for( int i = 0; i < (IMWD/8); i++ ) {
-//                         printf( "-%4.1d ", current_board[i][j]);
-//                      }
-//                      printf("\n");
-//                    }
+      for( int j = 0; j < IMHT; j++ ) {
+        for( int i = 0; i < (IMWD/8); i++ ) {
+            printf( "-%4.1d ", current_board[i][j]);
+        }
+        printf("\n");
+      }
 
-        workers_finished = 0;
-        int offset_x = 0;
-        int offset_y = 0;
+       workers_finished = 0;
+       offset_x = 0;
+       offset_y = 0;
+
+       if(processing_rounds % 2) { //alternating led flashing
+           to_leds <: 1;
+       }
+       else {
+           to_leds <: 5;
+       }
+
 
        par for(int i = 0; i < num_workers; i++) {
             if(i == 0) {
@@ -318,7 +334,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
               for(int j = -1; j < ((IMHT/(num_workers/2))+1); j ++) {
                   for(int k = -1; k < ((IMWD/16)+1); k++) {
-                      distributor_worker[i] <: current_board[xadd(offset_x, k)][yadd(offset_y, j)];
+                      distributor_worker[i] <: (uchar) current_board[xadd(offset_x, k)][yadd(offset_y, j)];
                   }
               }
         }
@@ -432,7 +448,7 @@ void DataOutStream(char outfname[], chanend c_in, chanend from_buttons)
         for( int x = 0; x < IMWD/8; x++ ) {
             c_in :> packedline;
             for( uchar z = 0; z < 8; z++ ) {
-                packedx = offsetx+z;
+                packedx = offsetx + z;
                 if (GetCell(packedline, z) == 1) {
                     line[packedx] = 255;
                 }
@@ -510,6 +526,28 @@ void button_listener(in port b, chanend to_dist, chanend to_dataout) {
     }
 }
 
+int showLEDs(out port p, chanend from_data_in, chanend from_distributor) {
+  int pattern; //1st bit...separate green LED
+               //2nd bit...blue LED
+               //3rd bit...green LED
+               //4th bit...red LED
+  while (1) {
+    select {
+        case from_data_in :> pattern:
+           // printf("pattern: %d\n", pattern);
+            p <: pattern;                //send pattern to LED port
+            break;
+
+        case from_distributor :> pattern:
+            //printf("pattern: %d\n", pattern);
+            p <: pattern;
+            break;
+    }
+
+  }
+  return 0;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////
 //
 // Orchestrate concurrent system and start up all threads
@@ -519,19 +557,20 @@ int main(void) {
 
 i2c_master_if i2c[1];               //interface to orientation
 
-chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dist, buttons_to_dataout;    //extend your channel definitions here
+chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dist, buttons_to_dataout, leds_data_in, leds_distributor;    //extend your channel definitions here
 
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream("128x128.pgm", c_inIO);          //thread to read in a PGM image
-    on tile[1] : DataOutStream("testout128.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
-    on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker);//thread to coordinate work on image
+    on tile[0] : DataInStream("512x512.pgm", c_inIO, leds_data_in);          //thread to read in a PGM image
+    on tile[1] : DataOutStream("testout512.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker, leds_distributor);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
     on tile[1] : Worker((uchar)3, distributor_worker[2]);
     on tile[1] : Worker((uchar)4, distributor_worker[3]);
     on tile[0] : button_listener(buttons, buttons_to_dist, buttons_to_dataout);
+    on tile[0] : showLEDs(leds, leds_data_in, leds_distributor);
   }
 
   return 0;
