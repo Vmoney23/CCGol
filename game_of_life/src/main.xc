@@ -7,8 +7,8 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 64                 //image height
-#define  IMWD 64                  //image width
+#define  IMHT 16                 //image height
+#define  IMWD 16                  //image width
 #define  num_workers 4
 
 typedef unsigned char uchar;      //using uchar as shorthand
