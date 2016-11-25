@@ -210,6 +210,10 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   int offset_x;
   int offset_y;
 
+  timer t;
+  long start_time = 0;
+  long end_time = 0;
+
 
   //Starting up and wait for tilting of the xCore-200 Explorer
   printf( "ProcessImage: Start, size = %dx%d\n", IMHT, IMWD );
@@ -227,10 +231,12 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
       }
       data_in_complete = 1;
   }
+ // printf("start_time: %d\n", start_time);
 
   printf( "Processing...\n" );
 
   while((processing_rounds < max_rounds) && data_in_complete) {
+      t :> start_time;
 //      printf("processing round %d begun..\n", processing_rounds+1);
       select {
           case c_out :> please_output: {
@@ -351,6 +357,9 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                 distributor_worker[z] <: (uchar) 1;
             }
         }
+        t :> end_time;
+        end_time -= start_time;
+        printf("end time: %d nanoseconds\n", end_time*10);
   }
 
   printf("Processing complete...\n");
