@@ -10,7 +10,7 @@
 #define  IMHT 16                 //image height
 #define  IMWD 16                  //image width
 #define  num_workers 4
-#define  num_rounds 100
+#define  num_rounds 1000
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -206,7 +206,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   uchar data_in_complete = 0;
   uchar button_input;
   uchar please_output;
-  uchar pause = 0;
+  uchar paused = 0;
   int offset_x;
   int offset_y;
 
@@ -231,11 +231,11 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   printf( "Processing...\n" );
 
   while((processing_rounds < max_rounds) && data_in_complete) {
-      printf("processing round %d begun..\n", processing_rounds+1);
+//      printf("processing round %d begun..\n", processing_rounds+1);
       select {
           case c_out :> please_output: {
               please_output = 1;
-              printf("Output requested...\n");
+//              printf("Output requested...\n");
               to_leds <: 2;
 
               for( int j = 0; j < IMHT; j++ ) {
@@ -246,11 +246,16 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
               break;
           }
-          case fromAcc :> pause: {
-
-              printf("-------------------\n");
-              printf("Processing rounds completed: %d\n", processing_rounds+1);
-              printf("-------------------\n");
+          case fromAcc :> paused: {
+              if (paused) {
+                  to_leds <: 8;
+                  printf("\n-------------------------------\n");
+                  printf("Processing rounds completed: %d\n", processing_rounds+1);
+                  printf("-------------------------------\n\n");
+                  while (paused) {
+                      fromAcc :> paused;
+                  }
+              }
               break;
           }
           default: {
@@ -339,7 +344,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
            }
         }
 
-        printf( "%d processing round completed...\n", (processing_rounds+1));
+//        printf( "%d processing round completed...\n", (processing_rounds+1));
         processing_rounds++;
         if (processing_rounds < max_rounds) {
             for (uchar z = 0; z < num_workers; z++) {
@@ -349,7 +354,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   }
 
   printf("Processing complete...\n");
-  printf( "%d processing round completed...\n", (processing_rounds));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +417,7 @@ void DataOutStream(char outfname[], chanend c_in, chanend from_buttons)
 void orientation( client interface i2c_master_if i2c, chanend toDist) {
   i2c_regop_res_t result;
   char status_data = 0;
-  int tilted = 0;
+  uchar tilted = 0;
 
   // Configure FXOS8700EQ
   result = i2c.write_reg(FXOS8700EQ_I2C_ADDR, FXOS8700EQ_XYZ_DATA_CFG_REG, 0x01);
@@ -439,12 +443,14 @@ void orientation( client interface i2c_master_if i2c, chanend toDist) {
     int x = read_acceleration(i2c, FXOS8700EQ_OUT_X_MSB);
 
     //send signal to distributor after first tilt
-    if (!tilted) {
-      if (x>30) {
-        tilted = 1 - tilted;
-        toDist <: 1;
+      if (x>15) {
+        toDist <: (uchar) 1;
+        tilted = (uchar) 1;
       }
-    }
+      if (x<15 && tilted == 1) {
+          toDist <: (uchar) 0;
+          tilted = (uchar) 0;
+      }
   }
 }
 
