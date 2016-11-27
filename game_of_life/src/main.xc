@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 512                  //image height
-#define  IMWD 512                  //image width
+#define  IMHT 64                  //image height
+#define  IMWD 64                  //image width
 #define  num_workers 4
 #define  num_rounds 100
-#define  file_in "512x512.pgm"
-#define  file_out "testout512.pgm"
+#define  file_in "64x64.pgm"
+#define  file_out "testout64.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -55,6 +55,23 @@ int yadd (int i, int a) {
         i = i - IMHT;
     }
     return i;
+}
+
+unsigned long timer_mod(long x, unsigned long max_ticks) {
+    while (x < 0) {
+        x = x + max_ticks;
+    }
+    while (x >= max_ticks) {
+        x = x - max_ticks;
+    }
+    return x;
+}
+
+float calc_time(unsigned long start_time, unsigned long end_time) {
+    float startTimeSeconds = (float)start_time/100000000;
+    float endTimeSeconds = (float)end_time/100000000;
+    float processTime = (endTimeSeconds - startTimeSeconds);
+    return processTime;
 }
 
 
@@ -209,13 +226,15 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   uchar button_input;
   uchar please_output;
   uchar paused = 0;
+  uchar livecellcount = 0;
   int offset_x;
   int offset_y;
 
   timer t;
   long start_time = 0;
   long end_time = 0;
-  float time_taken = 0;
+  float total_time_taken = 0;
+  unsigned long max_ticks = 4294967295;
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -257,9 +276,23 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
           }
           case fromAcc :> paused: {
               if (paused) {
+                  livecellcount = 0;
                   to_leds <: 8;
                   printf("\n-------------------------------\n");
                   printf("Processing rounds completed: %d\n", processing_rounds+1);
+
+                  for( int y = 0; y < IMHT; y++ ) {
+                          for( int x = 0; x < IMWD/8; x++ ) {
+                              for( uchar z = 0; z < 8; z++ ) {
+                                  if (GetCell(current_board[x][y], z) == 1) {
+                                      livecellcount++;
+                                  }
+                              }
+                          }
+                  }
+
+                  printf("Number of alive cells: %d\n", livecellcount);
+                  printf("Time elapsed: %f\n seconds", total_time_taken);
                   printf("-------------------------------\n\n");
                   while (paused) {
                       fromAcc :> paused;
@@ -361,10 +394,9 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
             }
         }
         t :> end_time;
-        end_time -= start_time;
-        time_taken = (end_time*10) % (2^31);
-//        printf("end time: %d nanoseconds\n", end_time*10);
-        printf("%f\n", time_taken);
+        float iteration_time = calc_time(timer_mod(start_time, max_ticks), timer_mod(end_time, max_ticks));
+        //printf("iteration: %f seconds\n", iteration_time);
+        total_time_taken = total_time_taken + iteration_time;
   }
 
   printf("Processing complete...\n");
@@ -456,12 +488,12 @@ void orientation( client interface i2c_master_if i2c, chanend toDist) {
     //get new x-axis tilt value
     int x = read_acceleration(i2c, FXOS8700EQ_OUT_X_MSB);
 
-    //send signal to distributor after first tilt
-      if (x>100) {
+    //send signal to distributor after tilt
+      if (x>20) {
         toDist <: (uchar) 1;
         tilted = (uchar) 1;
       }
-      if (x<100 && tilted == 1) {
+      if (x<20 && tilted == 1) {
           toDist <: (uchar) 0;
           tilted = (uchar) 0;
       }
