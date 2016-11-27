@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 64                  //image height
-#define  IMWD 64                  //image width
+#define  IMHT 128                  //image height
+#define  IMWD 128                  //image width
 #define  num_workers 4
-#define  num_rounds 100
-#define  file_in "64x64.pgm"
-#define  file_out "testout64.pgm"
+#define  num_rounds 10
+#define  file_in "128x128.pgm"
+#define  file_out "testout128.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -68,10 +68,10 @@ unsigned long timer_mod(long x, unsigned long max_ticks) {
 }
 
 float calc_time(unsigned long start_time, unsigned long end_time) {
-    float startTimeSeconds = (float)start_time/100000000;
-    float endTimeSeconds = (float)end_time/100000000;
-    float processTime = (endTimeSeconds - startTimeSeconds);
-    return processTime;
+    float start_time_seconds = (float)start_time/100000000;
+    float end_time_seconds = (float)end_time/100000000;
+    float process_time = (end_time_seconds - start_time_seconds);
+    return process_time;
 }
 
 
@@ -253,13 +253,12 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
       }
       data_in_complete = 1;
   }
- // printf("start_time: %d\n", start_time);
 
   printf( "Processing...\n" );
 
   while((processing_rounds < max_rounds) && data_in_complete) {
       t :> start_time;
-//      printf("processing round %d begun..\n", processing_rounds+1);
+      printf("processing round %d begun..\n", processing_rounds+1);
       select {
           case c_out :> please_output: {
               please_output = 1;
@@ -292,7 +291,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                   }
 
                   printf("Number of alive cells: %d\n", livecellcount);
-                  printf("Time elapsed: %f\n seconds", total_time_taken);
+                  printf("Time elapsed: %f seconds\n", total_time_taken);
                   printf("-------------------------------\n\n");
                   while (paused) {
                       fromAcc :> paused;
@@ -385,8 +384,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                break;
            }
         }
-
-//        printf( "%d processing round completed...\n", (processing_rounds+1));
+        //printf( "%d processing round completed...\n", (processing_rounds+1));
         processing_rounds++;
         if (processing_rounds < max_rounds) {
             for (uchar z = 0; z < num_workers; z++) {
@@ -395,10 +393,10 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
         t :> end_time;
         float iteration_time = calc_time(timer_mod(start_time, max_ticks), timer_mod(end_time, max_ticks));
-        //printf("iteration: %f seconds\n", iteration_time);
         total_time_taken = total_time_taken + iteration_time;
   }
 
+  printf("total time elapsed: %f\n", total_time_taken);
   printf("Processing complete...\n");
 }
 
@@ -522,12 +520,10 @@ int showLEDs(out port p, chanend from_data_in, chanend from_distributor) {
   while (1) {
     select {
         case from_data_in :> pattern:
-           // printf("pattern: %d\n", pattern);
             p <: pattern;                //send pattern to LED port
             break;
 
         case from_distributor :> pattern:
-            //printf("pattern: %d\n", pattern);
             p <: pattern;
             break;
     }
@@ -550,7 +546,7 @@ chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dis
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream(file_in, c_inIO, leds_data_in);          //thread to read in a PGM image
+    on tile[1] : DataInStream(file_in, c_inIO, leds_data_in);          //thread to read in a PGM image
     on tile[1] : DataOutStream(file_out, c_outIO, buttons_to_dataout);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker, leds_distributor);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
