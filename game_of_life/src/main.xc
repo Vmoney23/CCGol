@@ -7,10 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 256                 //image height
-#define  IMWD 256                  //image width
+#define  IMHT 512                  //image height
+#define  IMWD 512                  //image width
 #define  num_workers 4
-#define  num_rounds 1000
+#define  num_rounds 100
+#define  file_in "512x512.pgm"
+#define  file_out "testout512.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -213,6 +215,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   timer t;
   long start_time = 0;
   long end_time = 0;
+  float time_taken = 0;
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -359,7 +362,9 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
         t :> end_time;
         end_time -= start_time;
-        printf("end time: %d nanoseconds\n", end_time*10);
+        time_taken = (end_time*10) % (2^31);
+//        printf("end time: %d nanoseconds\n", end_time*10);
+        printf("%f\n", time_taken);
   }
 
   printf("Processing complete...\n");
@@ -452,11 +457,11 @@ void orientation( client interface i2c_master_if i2c, chanend toDist) {
     int x = read_acceleration(i2c, FXOS8700EQ_OUT_X_MSB);
 
     //send signal to distributor after first tilt
-      if (x>15) {
+      if (x>100) {
         toDist <: (uchar) 1;
         tilted = (uchar) 1;
       }
-      if (x<15 && tilted == 1) {
+      if (x<100 && tilted == 1) {
           toDist <: (uchar) 0;
           tilted = (uchar) 0;
       }
@@ -513,8 +518,8 @@ chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dis
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[0] : DataInStream("256x256.pgm", c_inIO, leds_data_in);          //thread to read in a PGM image
-    on tile[1] : DataOutStream("testout256.pgm", c_outIO, buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : DataInStream(file_in, c_inIO, leds_data_in);          //thread to read in a PGM image
+    on tile[1] : DataOutStream(file_out, c_outIO, buttons_to_dataout);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker, leds_distributor);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
