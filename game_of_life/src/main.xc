@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 128                  //image height
-#define  IMWD 128                  //image width
+#define  IMHT 256                  //image height
+#define  IMWD 256                  //image width
 #define  num_workers 4             //either 1, 2 or 4
 #define  num_rounds 100             //process iterations
-#define  file_in "128x128.pgm"
-#define  file_out "testout128.pgm"
+#define  file_in "256x256.pgm"
+#define  file_out "testout256.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -415,8 +415,11 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
         t :> end_time;
         float iteration_time = calc_time(timer_mod(start_time, max_ticks), timer_mod(end_time, max_ticks));
+        if (iteration_time < 0) {
+            iteration_time += 42.94967295;
+        }
         total_time_taken += iteration_time;
-        printf("%f\n", iteration_time);
+//        printf("%f\n", iteration_time);
   }
 
   printf("total time elapsed: %f seconds\n", total_time_taken);
