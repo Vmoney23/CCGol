@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 128                  //image height
-#define  IMWD 128                  //image width
+#define  IMHT 512                  //image height
+#define  IMWD 512                  //image width
 #define  num_workers 4             //either 1, 2 or 4
-#define  num_rounds 10             //process iterations
-#define  file_in "128x128.pgm"
-#define  file_out "testout128.pgm"
+#define  num_rounds 100             //process iterations
+#define  file_in "512x512.pgm"
+#define  file_out "testout512.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -304,13 +304,13 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                   printf("Processing rounds completed: %d\n", processing_rounds+1);
 
                   for( int y = 0; y < IMHT; y++ ) {
-                          for( int x = 0; x < IMWD/8; x++ ) {
-                              for( uchar z = 0; z < 8; z++ ) {
-                                  if (GetCell(current_board[x][y], z) == 1) {
-                                      livecellcount++;
-                                  }
+                      for( int x = 0; x < IMWD/8; x++ ) {
+                          for( uchar z = 0; z < 8; z++ ) {
+                              if (GetCell(current_board[x][y], z) == 1) {
+                                  livecellcount++;
                               }
                           }
+                      }
                   }
 
                   printf("Number of alive cells: %d\n", livecellcount);
@@ -421,6 +421,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         t :> end_time;
         float iteration_time = calc_time(timer_mod(start_time, max_ticks), timer_mod(end_time, max_ticks));
         total_time_taken += iteration_time;
+        printf("%f\n", iteration_time);
   }
 
   printf("total time elapsed: %f\n", total_time_taken);
@@ -578,8 +579,8 @@ par {
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker, leds_distributor);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
-    //on tile[1] : Worker((uchar)3, distributor_worker[2]);
-    //on tile[1] : Worker((uchar)4, distributor_worker[3]);
+    on tile[1] : Worker((uchar)3, distributor_worker[2]);
+    on tile[1] : Worker((uchar)4, distributor_worker[3]);
     on tile[0] : button_listener(buttons, buttons_to_dist, buttons_to_dataout);
     on tile[0] : showLEDs(leds, leds_data_in, leds_distributor);
   }
