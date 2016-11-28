@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 512                  //image height
-#define  IMWD 512                  //image width
-#define  num_workers 4
-#define  num_rounds 1000
-#define  file_in "512x512.pgm"
-#define  file_out "testout512.pgm"
+#define  IMHT 128                  //image height
+#define  IMWD 128                  //image width
+#define  num_workers 4             //either 1, 2 or 4
+#define  num_rounds 10             //process iterations
+#define  file_in "128x128.pgm"
+#define  file_out "testout128.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -34,7 +34,11 @@ on tile[0] : out port leds = XS1_PORT_4F; //port for leds
 #define FXOS8700EQ_OUT_Z_LSB 0x6
 
 
-
+/////////////////////////////////////////////////////////////////////////////////////////
+//
+// Takes in 2 values and calculates the sum mod IMWD/8. Used when wrapping round the x axis of the board.
+//
+/////////////////////////////////////////////////////////////////////////////////////////
 int xadd (int i, int a) {
     i = i + a;
     while (i < 0) {
@@ -46,6 +50,11 @@ int xadd (int i, int a) {
     return i;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//
+// Takes in 2 values and calculates the sum mod IMHT. Used when wrapping round the y axis of the board
+//
+/////////////////////////////////////////////////////////////////////////////////////////
 int yadd (int i, int a) {
     i = i + a;
     while (i < 0) {
@@ -57,6 +66,11 @@ int yadd (int i, int a) {
     return i;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//
+// Takes in a value to 'mod' and a value to mod by the size of long. Used when calculating the time
+//
+/////////////////////////////////////////////////////////////////////////////////////////
 unsigned long timer_mod(long x, unsigned long max_ticks) {
     if ((x % max_ticks) > -1) {
         return (x % max_ticks);
@@ -72,7 +86,11 @@ float calc_time(unsigned long start_time, unsigned long end_time) {
     return process_time;
 }
 
-
+/////////////////////////////////////////////////////////////////////////////////////////
+//
+// Takes a byte and an index and returns the bit at the index in the byte.
+//
+/////////////////////////////////////////////////////////////////////////////////////////
 uchar GetCell(uchar byte, uchar index) {
     uchar cell;
     cell = (((byte << (index)) >> (7)) & 1);
@@ -215,9 +233,9 @@ void DataInStream(char infname[], chanend c_out, chanend to_leds)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //
-// Start your implementation by changing this function to implement the game of life
-// by farming out parts of the image to worker threads who implement it...
-// Currently the function just inverts the image
+//
+//
+//
 //
 /////////////////////////////////////////////////////////////////////////////////////////
 void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButtons, chanend distributor_worker[num_workers], chanend to_leds)
@@ -354,8 +372,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
         while(workers_finished<num_workers) { //recieving data from the workers
            par select {
-               case distributor_worker[uchar j] :> uchar data:
-
+               case distributor_worker[uchar j] :> uchar data: //calculatse the offset for multiple workers
                  switch(j) {
                    case 0:
                         offset_x = 0;
@@ -529,7 +546,7 @@ int showLEDs(out port p, chanend from_data_in, chanend from_distributor) {
                //4th bit...red LED
   while (1) {
     select {
-        case from_data_in :> pattern:
+        case from_data_in :> pattern:    //Recieves the pattern from data in when it starts
             p <: pattern;                //send pattern to LED port
             break;
 
@@ -561,8 +578,8 @@ par {
     on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker, leds_distributor);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, distributor_worker[0]);
     on tile[1] : Worker((uchar)2, distributor_worker[1]);
-    on tile[1] : Worker((uchar)3, distributor_worker[2]);
-    on tile[1] : Worker((uchar)4, distributor_worker[3]);
+    //on tile[1] : Worker((uchar)3, distributor_worker[2]);
+    //on tile[1] : Worker((uchar)4, distributor_worker[3]);
     on tile[0] : button_listener(buttons, buttons_to_dist, buttons_to_dataout);
     on tile[0] : showLEDs(leds, leds_data_in, leds_distributor);
   }
