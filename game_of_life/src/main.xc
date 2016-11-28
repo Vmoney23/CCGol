@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 512                  //image height
-#define  IMWD 512                  //image width
+#define  IMHT 128                  //image height
+#define  IMWD 128                  //image width
 #define  num_workers 4             //either 1, 2 or 4
 #define  num_rounds 100             //process iterations
-#define  file_in "512x512.pgm"
-#define  file_out "testout512.pgm"
+#define  file_in "128x128.pgm"
+#define  file_out "testout128.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -71,19 +71,20 @@ int yadd (int i, int a) {
 // Takes in a value to 'mod' and a value to mod by the size of long. Used when calculating the time
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-unsigned long timer_mod(long x, unsigned long max_ticks) {
+unsigned long timer_mod(unsigned long x, unsigned long max_ticks) {
     if ((x % max_ticks) > -1) {
-        return (x % max_ticks);
+        return (unsigned long) (x % max_ticks);
     } else {
-        return ((x + max_ticks) % max_ticks);
+        return (unsigned long) ((x + max_ticks) % max_ticks);
     }
 }
 
 float calc_time(unsigned long start_time, unsigned long end_time) {
     float start_time_seconds = (float) start_time/100000000;
     float end_time_seconds = (float) end_time/100000000;
-    float process_time = (end_time_seconds - start_time_seconds);
-    return process_time;
+//    float process_time = (end_time_seconds - start_time_seconds);
+//    return process_time;
+    return (float) (end_time_seconds - start_time_seconds);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -253,10 +254,10 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   int offset_y;
 
   timer t;
-  long start_time = 0;
-  long end_time = 0;
+  unsigned long start_time = 0;
+  unsigned long end_time = 0;
   float total_time_taken = 0;
-  unsigned long max_ticks = 2^32;
+  unsigned long max_ticks = 4294967295;
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -280,7 +281,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
   while((processing_rounds < max_rounds) && data_in_complete) {
       t :> start_time;
-//      livecellcount = 0;
 //      printf("processing round %d begun..\n", processing_rounds+1);
       select {
           case c_out :> please_output: {
@@ -395,14 +395,9 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                         break;
                }
 
-//               livecellcount = 0;
                for(int l = 0; l < (IMHT/(num_workers/2)); l ++) {
                    for(int k = 0; k < (IMWD/16); k++) {
                        distributor_worker[j] :> current_board[xadd(offset_x, k)][yadd(offset_y, l)];
-//                       if (current_board[xadd(offset_x, k)][yadd(offset_y, l)]) {
-//                           livecellcount++;
-//                           printf("livecell!! count: %d\n", livecellcount);
-//                       }
                    }
                }
 
@@ -424,7 +419,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         printf("%f\n", iteration_time);
   }
 
-  printf("total time elapsed: %f\n", total_time_taken);
+  printf("total time elapsed: %f seconds\n", total_time_taken);
   printf("Processing complete...\n");
 }
 
