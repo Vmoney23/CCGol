@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 128                  //image height
-#define  IMWD 128                  //image width
+#define  IMHT 512                  //image height
+#define  IMWD 512                  //image width
 #define  num_workers 4
-#define  num_rounds 10
-#define  file_in "128x128.pgm"
-#define  file_out "testout128.pgm"
+#define  num_rounds 1000
+#define  file_in "512x512.pgm"
+#define  file_out "testout512.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -58,18 +58,16 @@ int yadd (int i, int a) {
 }
 
 unsigned long timer_mod(long x, unsigned long max_ticks) {
-    while (x < 0) {
-        x = x + max_ticks;
+    if ((x % max_ticks) > -1) {
+        return (x % max_ticks);
+    } else {
+        return ((x + max_ticks) % max_ticks);
     }
-    while (x >= max_ticks) {
-        x = x - max_ticks;
-    }
-    return x;
 }
 
 float calc_time(unsigned long start_time, unsigned long end_time) {
-    float start_time_seconds = (float)start_time/100000000;
-    float end_time_seconds = (float)end_time/100000000;
+    float start_time_seconds = (float) start_time/100000000;
+    float end_time_seconds = (float) end_time/100000000;
     float process_time = (end_time_seconds - start_time_seconds);
     return process_time;
 }
@@ -89,14 +87,16 @@ void Worker(uchar id, chanend worker_distributor) {
     uchar packedline = 0;
     uchar byteindex = 0;
     uchar cellindex = 0;
+//    int live_cells = 0;
+//    int pre_live_cells;
 
     while (processing){
+//        live_cells = 0;
     for(int i = 0; i < (IMHT/(num_workers/2)+2); i++) {
         for(int j = 0; j < ((IMWD/16)+2); j++) {
             worker_distributor :> board_segment[j][i];
         }
     }
-
 
     //PROCESSING
     worker_distributor <: (uchar)id;
@@ -140,11 +140,13 @@ void Worker(uchar id, chanend worker_distributor) {
                          }
                          else {
                              packedline |= (1 << 7-z);
+//                             live_cells++;
                          }
                  }
                  else {
                      if(a == 3) {
                          packedline |= (1 << 7-z);
+//                         live_cells++;
                      }
                      else {
                          packedline |= (0 << 7-z);
@@ -155,6 +157,8 @@ void Worker(uchar id, chanend worker_distributor) {
             worker_distributor <: packedline;
          } // x loop
      } // y loop
+//    prev_live_cells = live_cells;
+//    worker_distributor <: live_cells;
     worker_distributor :> processing;
     }
 }
@@ -234,7 +238,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   long start_time = 0;
   long end_time = 0;
   float total_time_taken = 0;
-  unsigned long max_ticks = 4294967295;
+  unsigned long max_ticks = 2^32;
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -258,7 +262,8 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
   while((processing_rounds < max_rounds) && data_in_complete) {
       t :> start_time;
-      printf("processing round %d begun..\n", processing_rounds+1);
+//      livecellcount = 0;
+//      printf("processing round %d begun..\n", processing_rounds+1);
       select {
           case c_out :> please_output: {
               please_output = 1;
@@ -373,9 +378,14 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                         break;
                }
 
+//               livecellcount = 0;
                for(int l = 0; l < (IMHT/(num_workers/2)); l ++) {
                    for(int k = 0; k < (IMWD/16); k++) {
                        distributor_worker[j] :> current_board[xadd(offset_x, k)][yadd(offset_y, l)];
+//                       if (current_board[xadd(offset_x, k)][yadd(offset_y, l)]) {
+//                           livecellcount++;
+//                           printf("livecell!! count: %d\n", livecellcount);
+//                       }
                    }
                }
 
@@ -393,7 +403,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
         t :> end_time;
         float iteration_time = calc_time(timer_mod(start_time, max_ticks), timer_mod(end_time, max_ticks));
-        total_time_taken = total_time_taken + iteration_time;
+        total_time_taken += iteration_time;
   }
 
   printf("total time elapsed: %f\n", total_time_taken);
