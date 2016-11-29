@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 256                  //image height
-#define  IMWD 256                  //image width
-#define  num_workers 4             //either 1, 2 or 4
-#define  num_rounds 100             //process iterations
-#define  file_in "256x256.pgm"
-#define  file_out "testout256.pgm"
+#define  IMHT 16                  //image height
+#define  IMWD 16                  //image width
+#define  num_workers 4             //either 2 or 4
+#define  num_rounds 1000             //process iterations
+#define  file_in "test.pgm"
+#define  file_out "testout.pgm"
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -48,6 +48,12 @@ int xadd (int i, int a) {
         i = i - (IMWD/8);
     }
     return i;
+//    i = i + a;
+//    if ((i % (IMWD/8)) > -1) {
+//       return (int) (i % (IMWD/8));
+//    } else {
+//       return (int) ((i + (IMWD/8)) % (IMWD/8));
+//    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -64,6 +70,12 @@ int yadd (int i, int a) {
         i = i - IMHT;
     }
     return i;
+//    i = i + a;
+//    if ((i % IMHT) > -1) {
+//        return (int) (i % IMHT);
+//    } else {
+//        return (int) ((i + IMHT) % IMHT);
+//    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +200,7 @@ void Worker(uchar id, chanend worker_distributor) {
 // Read Image from PGM file from path infname[] to channel c_out
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-void DataInStream(char infname[], chanend c_out, chanend to_leds)
+void DataInStream(char infname[], streaming chanend c_out, chanend to_leds)
 {
   int res;
   uchar line[ IMWD ];
@@ -419,7 +431,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
             iteration_time += 42.94967295;
         }
         total_time_taken += iteration_time;
-//        printf("%f\n", iteration_time);
+        printf("%f\n", iteration_time);
   }
 
   printf("total time elapsed: %f seconds\n", total_time_taken);
@@ -567,20 +579,21 @@ int main(void) {
 
 i2c_master_if i2c[1];               //interface to orientation
 
-chan c_inIO, c_outIO, c_control, distributor_worker[num_workers], buttons_to_dist, buttons_to_dataout, leds_data_in, leds_distributor;    //extend your channel definitions here
+chan c_inIO, c_outIO, c_control, c_distributor_worker[num_workers], c_buttons_to_dist, c_buttons_to_dataout, c_leds_data_in, c_leds_distributor;    //extend your channel definitions here
+streaming chan ;
 
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
-    on tile[1] : DataInStream(file_in, c_inIO, leds_data_in);          //thread to read in a PGM image
-    on tile[1] : DataOutStream(file_out, c_outIO, buttons_to_dataout);       //thread to write out a PGM image
-    on tile[0] : distributor(c_inIO, c_outIO, c_control, buttons_to_dist, distributor_worker, leds_distributor);//thread to coordinate work on image
-    on tile[1] : Worker((uchar)1, distributor_worker[0]);
-    on tile[1] : Worker((uchar)2, distributor_worker[1]);
-    on tile[1] : Worker((uchar)3, distributor_worker[2]);
-    on tile[1] : Worker((uchar)4, distributor_worker[3]);
-    on tile[0] : button_listener(buttons, buttons_to_dist, buttons_to_dataout);
-    on tile[0] : showLEDs(leds, leds_data_in, leds_distributor);
+    on tile[1] : DataInStream(file_in, c_inIO, c_leds_data_in);          //thread to read in a PGM image
+    on tile[1] : DataOutStream(file_out, c_outIO, c_buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : distributor(c_inIO, c_outIO, c_control, c_buttons_to_dist, c_distributor_worker, c_leds_distributor);//thread to coordinate work on image
+    on tile[1] : Worker((uchar)1, c_distributor_worker[0]);
+    on tile[1] : Worker((uchar)2, c_distributor_worker[1]);
+    on tile[1] : Worker((uchar)3, c_distributor_worker[2]);
+    on tile[1] : Worker((uchar)4, c_distributor_worker[3]);
+    on tile[0] : button_listener(buttons, c_buttons_to_dist, c_buttons_to_dataout);
+    on tile[0] : showLEDs(leds, c_leds_data_in, c_leds_distributor);
   }
 
   return 0;
