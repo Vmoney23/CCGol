@@ -1,4 +1,4 @@
-// COMS20001 - Cellular Automaton Farm - Initial Code Skeleton
+// COMS20001 - Cellular Automaton Farm
 // (using the XMOS i2c accelerometer demo code)
 
 #include <platform.h>
@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 16                  //image height
-#define  IMWD 16                  //image width
+#define  IMHT 128                  //image height
+#define  IMWD 128                  //image width
 #define  num_workers 4             //either 2 or 4
 #define  num_rounds 10000             //process iterations
-#define  file_in "test.pgm"
-#define  file_out "testout.pgm"
+#define  file_in "128x128.pgm"           //the image to be processed
+#define  file_out "testout128.pgm"       //the image file to output the result to
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -48,12 +48,6 @@ int xadd (int i, int a) {
         i = i - (IMWD/8);
     }
     return i;
-//    i = i + a;
-//    if ((i % (IMWD/8)) > -1) {
-//       return (int) (i % (IMWD/8));
-//    } else {
-//       return (int) ((i + (IMWD/8)) % (IMWD/8));
-//    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -70,12 +64,6 @@ int yadd (int i, int a) {
         i = i - IMHT;
     }
     return i;
-//    i = i + a;
-//    if ((i % IMHT) > -1) {
-//        return (int) (i % IMHT);
-//    } else {
-//        return (int) ((i + IMHT) % IMHT);
-//    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -91,11 +79,14 @@ unsigned long timer_mod(unsigned long x, unsigned long max_ticks) {
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//
+// Returns the difference between the start and end time in seconds.
+//
+/////////////////////////////////////////////////////////////////////////////////////////
 float calc_time(unsigned long start_time, unsigned long end_time) {
     float start_time_seconds = (float) start_time/100000000;
     float end_time_seconds = (float) end_time/100000000;
-//    float process_time = (end_time_seconds - start_time_seconds);
-//    return process_time;
     return (float) (end_time_seconds - start_time_seconds);
 }
 
@@ -110,6 +101,11 @@ uchar GetCell(uchar byte, uchar index) {
     return cell;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//
+//
+//
+/////////////////////////////////////////////////////////////////////////////////////////
 void Worker(uchar id, chanend worker_distributor) {
     uchar board_segment[((IMWD/2)/8)+ 2 ][(IMHT/(num_workers/2))+ 2];
     uchar a;
@@ -118,11 +114,8 @@ void Worker(uchar id, chanend worker_distributor) {
     uchar packedline = 0;
     uchar byteindex = 0;
     uchar cellindex = 0;
-//    int live_cells = 0;
-//    int pre_live_cells;
 
     while (processing){
-//        live_cells = 0;
     for(int i = 0; i < (IMHT/(num_workers/2)+2); i++) {
         for(int j = 0; j < ((IMWD/16)+2); j++) {
             worker_distributor :> board_segment[j][i];
@@ -130,7 +123,7 @@ void Worker(uchar id, chanend worker_distributor) {
     }
 
     //PROCESSING
-    worker_distributor <: (uchar)id;
+//    worker_distributor <: (uchar)id;
     for(int y = 1; y < (IMHT/(num_workers/2)+1); y ++) {
         byteindex = 0;
         for(int x = 1; x < ((IMWD/16)+1); x ++) { //for all the cells in the board check the number of adjacent cells
@@ -185,11 +178,12 @@ void Worker(uchar id, chanend worker_distributor) {
                  }
 
             } // z loop
+            worker_distributor <: (uchar)id;
+            worker_distributor <: (int)(x-1);
+            worker_distributor <: (int)(y-1);
             worker_distributor <: packedline;
          } // x loop
      } // y loop
-//    prev_live_cells = live_cells;
-//    worker_distributor <: live_cells;
     worker_distributor :> processing;
     }
 }
@@ -215,7 +209,6 @@ void DataInStream(char infname[], chanend c_out, chanend to_leds)
     printf( "DataInStream: Error openening %s\n.", infname );
     return;
   }
-  to_leds <: 4;
   //Read image line-by-line and send byte by byte to channel c_out
   for( int y = 0; y < IMHT; y++ ) {
     offsetx = 0;
@@ -282,6 +275,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   fromButtons :> button_input;
 
   if (button_input == 14) {
+      to_leds <: 4;
       //INITIALISATION
       for( int y = 0; y < IMHT; y++ ) {   //go through all lines
           for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
@@ -344,17 +338,14 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
           }
       }
 
+      if(processing_rounds % 2) { //alternating led flashing
+        to_leds <: 4;
+      }
+      else {
+        to_leds <: 5;
+      }
+
        workers_finished = 0;
-       offset_x = 0;
-       offset_y = 0;
-
-       if(processing_rounds % 2) { //alternating led flashing
-           to_leds <: 1;
-       }
-       else {
-           to_leds <: 5;
-       }
-
 
        par for(int i = 0; i < num_workers; i++) { //sending data to the workers
            switch(i) {
@@ -386,7 +377,8 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
               }
         }
 
-        while(workers_finished<num_workers) { //recieving data from the workers
+        int processed_cells = 0;
+        while(processed_cells<(IMHT*(IMWD/8))) { //recieving data from the workers
            par select {
                case distributor_worker[uchar j] :> uchar data: //calculatse the offset for multiple workers
                  switch(j) {
@@ -410,14 +402,14 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                         offset_y = (IMHT/(num_workers/2));
                         break;
                }
+               int k;
+               int l;
+               distributor_worker[j] :> k;
+               distributor_worker[j] :> l;
+               distributor_worker[j] :> current_board[xadd(offset_x, k)][yadd(offset_y, l)];
 
-               for(int l = 0; l < (IMHT/(num_workers/2)); l ++) {
-                   for(int k = 0; k < (IMWD/16); k++) {
-                       distributor_worker[j] :> current_board[xadd(offset_x, k)][yadd(offset_y, l)];
-                   }
-               }
+               processed_cells++;
 
-               workers_finished++;
 
                break;
            }
