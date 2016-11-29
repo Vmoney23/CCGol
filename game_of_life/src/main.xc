@@ -9,8 +9,8 @@
 
 #define  IMHT 16                  //image height
 #define  IMWD 16                  //image width
-#define  num_workers 2             //either 2 or 4
-#define  num_rounds 1000             //process iterations
+#define  num_workers 4             //either 2 or 4
+#define  num_rounds 10000             //process iterations
 #define  file_in "test.pgm"
 #define  file_out "testout.pgm"
 
@@ -605,8 +605,8 @@ par {
     on tile[0] : distributor(c_inIO, c_outIO, c_control, c_buttons_to_dist, c_distributor_worker, c_leds_distributor);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, c_distributor_worker[0]);
     on tile[1] : Worker((uchar)2, c_distributor_worker[1]);
-//    on tile[1] : Worker((uchar)3, c_distributor_worker[2]);
-//    on tile[1] : Worker((uchar)4, c_distributor_worker[3]);
+    on tile[1] : Worker((uchar)3, c_distributor_worker[2]);
+    on tile[1] : Worker((uchar)4, c_distributor_worker[3]);
     on tile[0] : button_listener(buttons, c_buttons_to_dist, c_buttons_to_dataout);
     on tile[0] : showLEDs(leds, c_leds_data_in, c_leds_distributor);
   }
