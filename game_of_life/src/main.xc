@@ -9,7 +9,7 @@
 
 #define  IMHT 16                  //image height
 #define  IMWD 16                  //image width
-#define  num_workers 4             //either 2 or 4
+#define  num_workers 2             //either 2 or 4
 #define  num_rounds 1000             //process iterations
 #define  file_in "test.pgm"
 #define  file_out "testout.pgm"
@@ -200,7 +200,7 @@ void Worker(uchar id, chanend worker_distributor) {
 // Read Image from PGM file from path infname[] to channel c_out
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-void DataInStream(char infname[], streaming chanend c_out, chanend to_leds)
+void DataInStream(char infname[], chanend c_out, chanend to_leds)
 {
   int res;
   uchar line[ IMWD ];
@@ -239,7 +239,6 @@ void DataInStream(char infname[], streaming chanend c_out, chanend to_leds)
 
   //Close PGM image file
   _closeinpgm();
-  free(line);
   printf( "DataInStream: Done...\n" );
   return;
 }
@@ -267,8 +266,12 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
 
   timer t;
   unsigned long start_time = 0;
+  unsigned long pause_start = 0;
+  unsigned long pause_end = 0;
   unsigned long end_time = 0;
   float total_time_taken = 0;
+  float pause_time = 0;
+  float total_time_paused = 0;
   unsigned long max_ticks = 4294967295;
 
 
@@ -282,7 +285,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
       //INITIALISATION
       for( int y = 0; y < IMHT; y++ ) {   //go through all lines
           for( int x = 0; x < (IMWD/8); x++ ) { //go through each pixel per line
-
               c_in :> current_board[x][y]; //read in and store pixel value
           }
       }
@@ -310,6 +312,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
           }
           case fromAcc :> paused: {
               if (paused) {
+                  t :> pause_start;
                   livecellcount = 0;
                   to_leds <: 8;
                   printf("\n-------------------------------\n");
@@ -326,11 +329,12 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
                   }
 
                   printf("Number of alive cells: %d\n", livecellcount);
-                  printf("Time elapsed: %f seconds\n", total_time_taken);
+                  printf("Time elapsed: %f seconds (excluding paused time)\n", total_time_taken);
                   printf("-------------------------------\n\n");
                   while (paused) {
                       fromAcc :> paused;
                   }
+                  t :> pause_end;
               }
               break;
           }
@@ -427,11 +431,23 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
         t :> end_time;
         float iteration_time = calc_time(timer_mod(start_time, max_ticks), timer_mod(end_time, max_ticks));
+        pause_time = calc_time(timer_mod(pause_start, max_ticks), timer_mod(pause_end, max_ticks));
+        pause_start = 0;
+        pause_end = 0;
         if (iteration_time < 0) {
             iteration_time += 42.94967295;
         }
+//        if (pause_time < 0) {
+//            pause_time += 42.94967295;
+//        }
+        if (pause_time > 0) {
+            iteration_time = iteration_time - pause_time;
+        }
         total_time_taken += iteration_time;
+        total_time_paused += pause_time;
+//        printf("pause time: %f\n", pause_time);
         printf("%f\n", iteration_time);
+        pause_time = 0;
   }
 
   printf("total time elapsed: %f seconds\n", total_time_taken);
@@ -580,7 +596,6 @@ int main(void) {
 i2c_master_if i2c[1];               //interface to orientation
 
 chan c_inIO, c_outIO, c_control, c_distributor_worker[num_workers], c_buttons_to_dist, c_buttons_to_dataout, c_leds_data_in, c_leds_distributor;    //extend your channel definitions here
-streaming chan ;
 
 par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
@@ -590,8 +605,8 @@ par {
     on tile[0] : distributor(c_inIO, c_outIO, c_control, c_buttons_to_dist, c_distributor_worker, c_leds_distributor);//thread to coordinate work on image
     on tile[1] : Worker((uchar)1, c_distributor_worker[0]);
     on tile[1] : Worker((uchar)2, c_distributor_worker[1]);
-    on tile[1] : Worker((uchar)3, c_distributor_worker[2]);
-    on tile[1] : Worker((uchar)4, c_distributor_worker[3]);
+//    on tile[1] : Worker((uchar)3, c_distributor_worker[2]);
+//    on tile[1] : Worker((uchar)4, c_distributor_worker[3]);
     on tile[0] : button_listener(buttons, c_buttons_to_dist, c_buttons_to_dataout);
     on tile[0] : showLEDs(leds, c_leds_data_in, c_leds_distributor);
   }
