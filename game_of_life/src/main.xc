@@ -7,12 +7,12 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  IMHT 128                  //image height
-#define  IMWD 128                  //image width
+#define  IMHT 256                  //image height
+#define  IMWD 256                  //image width
 #define  num_workers 4             //either 2 or 4
 #define  num_rounds 10000             //process iterations
-#define  file_in "128x128.pgm"           //the image to be processed
-#define  file_out "testout128.pgm"       //the image file to output the result to
+#define  file_in "256x256.pgm"           //the image to be processed
+#define  file_out "testout256.pgm"       //the image file to output the result to
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
