@@ -9,7 +9,7 @@
 
 #define  readimage 1               //whether the image should be read in or processed on board
 #define  IMHT 512                 //image height
-#define  IMWD 512/*1264*/            //image width
+#define  IMWD 512   /*1264*/      //image width
 #define  num_workers 4             //either 2 or 4
 #define  num_rounds 100             //process iterations
 #define  file_in "512x512.pgm"           //the image to be processed
@@ -199,8 +199,8 @@ void DataInStream(char infname[], chanend c_out, chanend to_leds)
   uchar line[ IMWD ];
   printf( "DataInStream: Start...\n" );
   uchar packedline = 0;
-  uchar packedx = 0;
-  uchar offsetx = 0;
+  int packedx = 0;
+  int offsetx = 0;
 
   if(readimage) {
       //Open PGM file
@@ -258,7 +258,7 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   uchar please_output;
   uchar paused = 0;
   uchar livecellcount = 0;
-  int offsets[num_workers*2];
+  int offsets[(num_workers*2)];
 
   timer t;
   unsigned long start_time = 0;
@@ -270,14 +270,14 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   float total_time_paused = 0;
   unsigned long max_ticks = 4294967295;
 
-  offsets[0]=0;
-  offsets[1]=0;
-  offsets[2]=(IMWD/16);
-  offsets[3]=0;
-  offsets[4]=0;
-  offsets[5]=(IMHT/(num_workers/2));
-  offsets[6]=(IMWD/16);
-  offsets[7]=(IMHT/(num_workers/2));
+  offsets[0] = 0;
+  offsets[1] = 0;
+  offsets[2] = (IMWD/16);
+  offsets[3] = 0;
+  offsets[4] = 0;
+  offsets[5] = (IMHT/(num_workers/2));
+  offsets[6] = (IMWD/16);
+  offsets[7] = (IMHT/(num_workers/2));
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -421,8 +421,8 @@ void DataOutStream(char outfname[], chanend c_in, chanend from_buttons)
   while(1) {
     uchar SW2_button_in;
     uchar packedline = 0;
-    uchar packedx = 0;
-    uchar offsetx = 0;
+    int packedx = 0;
+    int offsetx = 0;
     from_buttons :> SW2_button_in;
 
     c_in <: (uchar) 1;
