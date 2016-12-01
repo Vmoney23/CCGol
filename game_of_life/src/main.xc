@@ -4,16 +4,17 @@
 #include <platform.h>
 #include <xs1.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "pgmIO.h"
 #include "i2c.h"
 
 #define  readimage 0               //whether the image should be read in or processed on board
-#define  IMHT 912                 //image height
-#define  IMWD 912                 //image width
-#define  num_workers 2             //either 2 or 4
+#define  IMHT 256                 //image height
+#define  IMWD 256                 //image width
+#define  num_workers 4             //either 2 or 4
 #define  num_rounds 100             //process iterations
-#define  file_in "256x256.pgm"           //the image to be processed
-#define  file_out "testoutlel.pgm"       //the image file to output the result to
+#define  file_in "64_alive.pgm"           //the image to be processed
+#define  file_out "testout256gen.pgm"       //the image file to output the result to
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -233,7 +234,8 @@ void DataInStream(char infname[], chanend c_out, chanend to_leds)
   }
   else {
       for(int i = 0; i < IMHT*(IMWD/8); i++ ) {
-          c_out <: (uchar) 15;
+          uchar random = rand() % 256;
+          c_out <: random;
       }
   }
   printf( "DataInStream: Done...\n" );
@@ -274,10 +276,10 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   offsets[1] = 0;
   offsets[2] = (IMWD/16);
   offsets[3] = 0;
-//  offsets[4] = 0;
-//  offsets[5] = (IMHT/(num_workers/2));
-//  offsets[6] = (IMWD/16);
-//  offsets[7] = (IMHT/(num_workers/2));
+  offsets[4] = 0;
+  offsets[5] = (IMHT/(num_workers/2));
+  offsets[6] = (IMWD/16);
+  offsets[7] = (IMHT/(num_workers/2));
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -498,11 +500,11 @@ void orientation( client interface i2c_master_if i2c, chanend toDist) {
     int x = read_acceleration(i2c, FXOS8700EQ_OUT_X_MSB);
 
     //send signal to distributor after tilt
-      if (x>120) {
+      if (x>20) {
         toDist <: (uchar) 1;
         tilted = (uchar) 1;
       }
-      if (x<120 && tilted == 1) {
+      if (x<20 && tilted == 1) {
           toDist <: (uchar) 0;
           tilted = (uchar) 0;
       }
