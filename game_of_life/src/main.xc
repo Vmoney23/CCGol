@@ -7,13 +7,13 @@
 #include "pgmIO.h"
 #include "i2c.h"
 
-#define  readimage 1               //whether the image should be read in or processed on board
-#define  IMHT 512                 //image height
-#define  IMWD 512   /*1264*/      //image width
-#define  num_workers 4             //either 2 or 4
+#define  readimage 0               //whether the image should be read in or processed on board
+#define  IMHT 912                 //image height
+#define  IMWD 912                 //image width
+#define  num_workers 2             //either 2 or 4
 #define  num_rounds 100             //process iterations
-#define  file_in "512x512.pgm"           //the image to be processed
-#define  file_out "testout512.pgm"       //the image file to output the result to
+#define  file_in "256x256.pgm"           //the image to be processed
+#define  file_out "testoutlel.pgm"       //the image file to output the result to
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -274,10 +274,10 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
   offsets[1] = 0;
   offsets[2] = (IMWD/16);
   offsets[3] = 0;
-  offsets[4] = 0;
-  offsets[5] = (IMHT/(num_workers/2));
-  offsets[6] = (IMWD/16);
-  offsets[7] = (IMHT/(num_workers/2));
+//  offsets[4] = 0;
+//  offsets[5] = (IMHT/(num_workers/2));
+//  offsets[6] = (IMWD/16);
+//  offsets[7] = (IMHT/(num_workers/2));
 
 
   //Starting up and wait for tilting of the xCore-200 Explorer
@@ -498,11 +498,11 @@ void orientation( client interface i2c_master_if i2c, chanend toDist) {
     int x = read_acceleration(i2c, FXOS8700EQ_OUT_X_MSB);
 
     //send signal to distributor after tilt
-      if (x>20) {
+      if (x>120) {
         toDist <: (uchar) 1;
         tilted = (uchar) 1;
       }
-      if (x<20 && tilted == 1) {
+      if (x<120 && tilted == 1) {
           toDist <: (uchar) 0;
           tilted = (uchar) 0;
       }
@@ -564,7 +564,7 @@ par {
     on tile[0] : i2c_master(i2c, 1, p_scl, p_sda, 10);   //server thread providing orientation data
     on tile[0] : orientation(i2c[0],c_control);        //client thread reading orientation data
     on tile[1] : DataInStream(file_in, c_inIO, c_leds_data_in);          //thread to read in a PGM image
-    on tile[1] : DataOutStream(file_out, c_outIO, c_buttons_to_dataout);       //thread to write out a PGM image
+    on tile[0] : DataOutStream(file_out, c_outIO, c_buttons_to_dataout);       //thread to write out a PGM image
     on tile[0] : distributor(c_inIO, c_outIO, c_control, c_buttons_to_dist, c_distributor_worker, c_leds_distributor);//thread to coordinate work on image
     par (uchar i = 0; i < num_workers; i++ ){
         on tile[1] : Worker((uchar)(i+1), c_distributor_worker[i]);
