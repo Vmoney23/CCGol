@@ -9,12 +9,12 @@
 #include "i2c.h"
 
 #define  readimage 0               //whether the image should be read in or processed on board
-#define  IMHT 256                 //image height
-#define  IMWD 256                 //image width
+#define  IMHT 16                 //image height
+#define  IMWD 16                 //image width
 #define  num_workers 4             //either 2 or 4
-#define  num_rounds 100             //process iterations
-#define  file_in "64_alive.pgm"           //the image to be processed
-#define  file_out "testout256gen.pgm"       //the image file to output the result to
+#define  num_rounds 1000000             //process iterations
+#define  file_in "test.pgm"           //the image to be processed
+#define  file_out "testout.pgm"       //the image file to output the result to
 
 typedef unsigned char uchar;      //using uchar as shorthand
 
@@ -393,7 +393,6 @@ void distributor(chanend c_in, chanend c_out, chanend fromAcc, chanend fromButto
         }
         total_time_taken += iteration_time;
         total_time_paused += pause_time;
-        printf("%f\n", iteration_time);
         pause_time = 0;
   }
 
@@ -416,7 +415,6 @@ void DataOutStream(char outfname[], chanend c_in, chanend from_buttons)
     from_buttons :> SW2_button_in;
 
     c_in <: (uchar) 1;
-    printf("DataOut request sent...\n");
     int res;
     uchar line[ IMWD ];
 
